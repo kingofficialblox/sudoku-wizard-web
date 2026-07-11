@@ -4,6 +4,7 @@ from constants import *
 from board import Board
 from sudoku_logic import SudokuLogic
 from button import Button
+from confetti import Confetti
 
 class Game:
 
@@ -141,7 +142,7 @@ class Game:
         self.popup_new_button = Button(
             WIDTH//2 - 170,
             HEIGHT//2 + 150,
-            150,
+            183,
             50,
             "NEW GAME",
             self.new_icon
@@ -150,7 +151,7 @@ class Game:
         self.popup_exit_button = Button(
             WIDTH//2 + 20,
             HEIGHT//2 + 150,
-            150,
+            170,
             50,
             "EXIT",
             self.exit_icon
@@ -170,6 +171,9 @@ class Game:
         self.wrong_sound.set_volume(0.45)
         self.hint_sound.set_volume(0.40)
         self.win_sound.set_volume(0.60)
+        # ---------- Confetti ----------
+        self.confetti = []
+        self.previous_win_state = False
 
     def handle_events(self):
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -307,10 +311,43 @@ class Game:
 
     def draw(self):
         self.screen.fill(WHITE)
+        # ---------- Spawn confetti once ----------
+        if self.logic.game_won and not self.previous_win_state:
+
+            self.confetti = []
+
+            for _ in range(20):
+                self.confetti.append(Confetti())
+
+            self.previous_win_state = True
+
+        elif not self.logic.game_won:
+            self.previous_win_state = False
 
         # Draw the Sudoku board
         self.board.draw(self.screen)
+        # ---------- Draw Confetti ----------
         if self.logic.game_won:
+
+            # Keep spawning new confetti
+            import random
+            for _ in range(random.randint(3, 8)):
+                self.confetti.append(Confetti())
+
+            # Update & draw
+            for particle in self.confetti:
+                particle.update()
+                particle.draw(self.screen)
+
+            # Remove particles that leave the screen
+            self.confetti = [
+                particle
+                for particle in self.confetti
+                if particle.y < HEIGHT + 100
+            ]
+            if len(self.confetti) > 350:
+                self.confetti = self.confetti[-350:]
+
             self.popup_new_button.draw(self.screen)
             self.popup_exit_button.draw(self.screen)
 

@@ -1,5 +1,5 @@
 import pygame
-
+import math
 import time
 
 from constants import *
@@ -15,6 +15,7 @@ class Board:
         self.trophy = pygame.image.load(
             "assets/images/trophy.png"
         ).convert_alpha()
+        self.sparkle_angle = 0
 
         self.timer_icon = pygame.image.load(
             "assets/images/timer.png"
@@ -38,7 +39,7 @@ class Board:
         self.new_icon = pygame.image.load(
             "assets/images/new_game.png"
         ).convert_alpha()
-        self.trophy = pygame.transform.smoothscale(self.trophy, (60, 60))
+        self.trophy = pygame.transform.smoothscale(self.trophy, (90, 90))
 
         self.timer_icon = pygame.transform.smoothscale(self.timer_icon, (28, 28))
 
@@ -46,11 +47,11 @@ class Board:
 
         self.target_icon = pygame.transform.smoothscale(self.target_icon, (28, 28))
 
-        self.star_icon = pygame.transform.smoothscale(self.star_icon, (30, 30))
+        self.star_icon = pygame.transform.smoothscale(self.star_icon, (50, 50))     
 
         self.exit_icon = pygame.transform.smoothscale(self.exit_icon, (30, 30))
         
-        self.new_icon = pygame.transform.smoothscale(self.new_icon,(24, 24))
+        self.new_icon = pygame.transform.smoothscale(self.new_icon,(30, 30))
 
         # ---------- Fonts ----------
 
@@ -437,6 +438,12 @@ class Board:
             )
 
     def draw_win(self, screen):
+        if self.logic.popup_scale < 1:
+            self.logic.popup_scale += (1 - self.logic.popup_scale) * 0.14
+            scale = self.logic.popup_scale
+
+        scale = min(self.logic.popup_scale, 1)
+        self.sparkle_angle += 2
         
         if not self.logic.game_won:
             return
@@ -446,8 +453,8 @@ class Board:
         overlay.fill((0, 0, 0, 180))
         screen.blit(overlay, (0, 0))
 
-        popup_width = 560
-        popup_height = 440
+        popup_width = int(500 * scale)
+        popup_height = int(470* scale)
 
         popup_rect = pygame.Rect(
             WIDTH//2 - popup_width//2,
@@ -470,13 +477,70 @@ class Board:
             4,
             border_radius=20
         )
+        if scale < 0.95:
+            return
+        # Floating animation
+        float_offset = math.sin(time.time() * 2.5) * 4
+
+        trophy_x = WIDTH // 2 - self.trophy.get_width() // 2
+        trophy_y = popup_rect.y + 8 + float_offset
+        # ---------- Golden Rays ----------
+        center_x = WIDTH // 2
+        center_y = trophy_y + self.trophy.get_height() // 2
+
+        rotation = time.time() * 40
+
+        for i in range(16):
+            angle = math.radians(i * (360 / 16) + rotation)
+
+            inner = 42
+            outer = 70
+
+            x1 = center_x + math.cos(angle) * inner
+            y1 = center_y + math.sin(angle) * inner
+
+            x2 = center_x + math.cos(angle) * outer
+            y2 = center_y + math.sin(angle) * outer
+
+            pygame.draw.line(
+                screen,
+                (255, 225, 120),
+                (x1, y1),
+                (x2, y2),
+                3
+            )
+
         screen.blit(
             self.trophy,
-            (
-                WIDTH//2 - self.trophy.get_width()//2,
-                popup_rect.y + 15
-            )
+            (trophy_x, trophy_y)
         )
+        # ---------- Trophy Sparkles ----------
+        center_x = WIDTH // 2
+        center_y = popup_rect.y + 55
+
+        radius = 55
+
+        for i in range(4):
+            angle = math.radians(self.sparkle_angle + i * 90)
+
+            x = center_x + math.cos(angle) * radius
+            y = center_y + math.sin(angle) * radius
+
+            # Outer glow
+            pygame.draw.circle(
+                screen,
+                (255, 235, 120),
+                (int(x), int(y)),
+                6
+            )
+
+            # Bright center
+            pygame.draw.circle(
+                screen,
+                (255, 255, 255),
+                (int(x), int(y)),
+                2
+            )
 
         title_font = pygame.font.SysFont("Segoe UI", 48, bold=True)
 
@@ -489,21 +553,7 @@ class Board:
         screen.blit(
             title,
             title.get_rect(
-                center=(WIDTH//2, popup_rect.y + 95)
-            )
-        )
-        info_font = pygame.font.SysFont("Segoe UI", 28)
-
-        subtitle = info_font.render(
-            "Puzzle Completed Successfully",
-            True,
-            TEXT
-        )
-
-        screen.blit(
-            subtitle,
-            subtitle.get_rect(
-                center=(WIDTH//2, popup_rect.y + 145)
+                center=(WIDTH//2, popup_rect.y +155)
             )
         )
         if self.logic.game_won:
@@ -522,12 +572,12 @@ class Board:
 
         screen.blit(
             self.timer_icon,
-            (icon_x, popup_rect.y + 160)
+            (icon_x, popup_rect.y + 190)
         )
 
         screen.blit(
             time_text,
-            (icon_x + 45, popup_rect.y + 160)
+            (icon_x + 45, popup_rect.y + 190)
         )
 
         mistake_text = self.popup_font.render(
@@ -538,12 +588,12 @@ class Board:
 
         screen.blit(
             self.mistake_icon,
-            (icon_x, popup_rect.y + 205)
+            (icon_x, popup_rect.y + 235)
         )
 
         screen.blit(
             mistake_text,
-            (icon_x + 45, popup_rect.y + 205)
+            (icon_x + 45, popup_rect.y + 235)
         )
         difficulty_text = self.popup_font.render(
             f"Difficulty : {self.logic.difficulty.title()}",
@@ -553,15 +603,15 @@ class Board:
 
         screen.blit(
             self.target_icon,
-            (icon_x, popup_rect.y + 250)
+            (icon_x, popup_rect.y + 280)
         )
 
         screen.blit(
             difficulty_text,
-            (icon_x + 45, popup_rect.y + 250)
+            (icon_x + 45, popup_rect.y + 280)
         )
 
-        star_y = popup_rect.y + 320
+        star_y = popup_rect.y + 360
 
         start_x = WIDTH//2 - 75
 
@@ -577,10 +627,15 @@ class Board:
             count = 1
 
         for i in range(count):
-            screen.blit(
+            pulse = 1 + 0.12 * math.sin(time.time() * 5 + i * 0.6)
+            size = int(30 * pulse)
+            star = pygame.transform.smoothscale(
                 self.star_icon,
-                (start_x + i * 35, star_y)
+                (size, size)
             )
+            x = start_x + i * 35 + (30 - size) // 2
+            y = star_y + (30 - size) // 2
+            screen.blit(star, (x, y))
 
     def draw(self, screen):
         self.draw_background(screen)

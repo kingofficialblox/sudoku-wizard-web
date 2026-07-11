@@ -13,7 +13,7 @@ class Button:
         self.icon = icon
         self.font = pygame.font.Font(
             "assets/fonts/Poppins-Bold.ttf",
-            26
+            22
         )
         self.count_font = pygame.font.Font(
             "assets/fonts/Poppins-Bold.ttf",
@@ -112,35 +112,41 @@ class Button:
             border_radius=12
         )
 
+        # Render text
         text = self.font.render(
             self.text,
             True,
             text_color
         )
 
+        spacing = 10
+
+        # -----------------------------
+        # Button with icon
+        # -----------------------------
         if self.icon:
-
-            spacing = 8
-
             total_width = self.icon.get_width() + spacing + text.get_width()
 
             start_x = draw_rect.centerx - total_width // 2
 
-            icon_rect = self.icon.get_rect(
-                midleft=(start_x, draw_rect.centery)
-            )
+            # Icon position
+            icon_x = start_x
+            icon_y = draw_rect.centery - self.icon.get_height() // 2
 
-            text_rect = text.get_rect(
-                midleft=(icon_rect.right + spacing, draw_rect.centery)
-            )
+            screen.blit(self.icon, (icon_x, icon_y))
 
-            screen.blit(self.icon, icon_rect)
+            # Text position
+            text_x = icon_x + self.icon.get_width() + spacing
+            text_y = draw_rect.centery - text.get_height() // 2
 
+            screen.blit(text, (text_x, text_y))
+        # -----------------------------
+        # Button without icon
+        # -----------------------------
         else:
 
             text_rect = text.get_rect(center=draw_rect.center)
-
-        screen.blit(text, text_rect)
+            screen.blit(text, text_rect)
 
         if self.count is not None:
             badge_x = draw_rect.right - 14

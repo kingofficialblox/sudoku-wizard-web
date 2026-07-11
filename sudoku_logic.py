@@ -16,6 +16,8 @@ class SudokuLogic:
         self.shake_time = 0
         self.hover = None
         self.end_time = None
+        
+        
 
         generator = SudokuGenerator()
         self.grid = generator.generate(difficulty)
@@ -34,6 +36,7 @@ class SudokuLogic:
         self.invalid_number = None
         self.invalid_time = 0
         self.game_won = False
+        self.popup_scale = 0.0
         # Timer
         self.start_time = time.time()
         self.notes = [
@@ -113,6 +116,7 @@ class SudokuLogic:
             self.notes[row][col].clear()
             if self.is_solved():
                 self.game_won = True
+                self.popup_scale = 0.0
                 self.end_time = time.time()
                 return "WIN"
 
