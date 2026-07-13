@@ -26,8 +26,8 @@ class Game:
         self.board = Board(self.logic)
         board_bottom = BOARD_Y + CELL_SIZE * 9
         keypad_y = board_bottom + 20
-        button_y1 = keypad_y + 60
-        button_y2 = button_y1 + 60
+        button_y1 = BOARD_Y + CELL_SIZE * 9 + 25
+        button_y2 = button_y1 + 65
 
         button_width = 140
         button_height = 48
@@ -36,31 +36,55 @@ class Game:
         # ---------- First Row ----------
         start_x = (WIDTH - (5 * button_width + 4 * gap)) // 2
 
-        self.new_game_button = Button(start_x, button_y1, button_width, button_height, "New")
+        self.new_game_button = Button(
+            start_x,
+            button_y1,
+            button_width,
+            button_height,
+            "New",
+            bg_color=(46, 204, 113),
+            hover_color=(72, 230, 140)
+        )
 
-        self.restart_button = Button(start_x + (button_width + gap) * 1,
-                                     button_y1,
-                                     button_width,
-                                     button_height,
-                                     "Restart")
+        self.restart_button = Button(
+            start_x + (button_width + gap) * 1,
+            button_y1,
+            button_width,
+            button_height,
+            "Restart",
+            bg_color=(46, 204, 113),
+            hover_color=(72, 230, 140)
+        )
 
-        self.undo_button = Button(start_x + (button_width + gap) * 2,
-                                  button_y1,
-                                  button_width,
-                                  button_height,
-                                  "Undo")
+        self.undo_button = Button(
+           start_x + (button_width + gap) * 2,
+           button_y1,
+           button_width,
+           button_height,
+           "Undo",
+           bg_color=(46, 204, 113),
+           hover_color=(72, 230, 140)
+        )
 
-        self.hint_button = Button(start_x + (button_width + gap) * 3,
-                                  button_y1,
-                                  button_width,
-                                  button_height,
-                                  "Hint")
+        self.hint_button = Button(
+            start_x + (button_width + gap) * 3,
+            button_y1,
+            button_width,
+            button_height,
+            "Hint",
+            bg_color=(46, 204, 113),
+            hover_color=(72, 230, 140)
+        )
 
-        self.solve_button = Button(start_x + (button_width + gap) * 4,
-                                   button_y1,
-                                   button_width,
-                                   button_height,
-                                   "Solve")
+        self.solve_button = Button(
+            start_x + (button_width + gap) * 4,
+            button_y1,
+            button_width,
+            button_height,
+            "Solve",
+            bg_color=(46, 204, 113),
+            hover_color=(72, 230, 140)
+        )
 
         # ---------- Second Row ----------
         difficulty_width = 140
@@ -72,7 +96,9 @@ class Game:
             button_y2,
             difficulty_width,
             button_height,
-            "Easy"
+            "Easy",
+            bg_color=(52, 152, 219),
+            hover_color=(90, 185, 255)
         )
 
         self.medium_button = Button(
@@ -80,7 +106,9 @@ class Game:
             button_y2,
             difficulty_width,
             button_height,
-            "Medium"
+            "Medium",
+            bg_color=(243, 156, 18),
+            hover_color=(255, 190, 50)
         )
 
         self.hard_button = Button(
@@ -88,30 +116,32 @@ class Game:
             button_y2,
             difficulty_width,
             button_height,
-            "Hard"
+            "Hard",
+            bg_color=(192, 57, 43),
+            hover_color=(220, 80, 65)
         )
+
         # -------- Number Buttons --------
 
         self.number_buttons = []
 
-        key_width = 70
-        key_height = 50
-        gap = 10
+        key_width = 75
+        key_height = 55
+        gap = 12
 
-        start_x = (WIDTH - (9 * key_width + 8 * gap)) // 2
-        start_y = keypad_y
+        start_x = BOARD_X - 100
+        start_y = BOARD_Y + 10
 
         for i in range(9):
             self.number_buttons.append(
                 Button(
-                    start_x + i * (key_width + gap),
-                    start_y,
+                    start_x,
+                    start_y + i * (key_height + gap),
                     key_width,
                     key_height,
                     str(i + 1)
                 )
             )
-        
 
         self.running = True
 
@@ -140,23 +170,26 @@ class Game:
         # ---------- Win Popup Buttons ----------
 
         self.popup_new_button = Button(
-            WIDTH//2 - 170,
-            HEIGHT//2 + 150,
-            183,
-            50,
+            WIDTH//2 - 230,
+            HEIGHT//2 + 300,
+            220,
+            70,
             "NEW GAME",
-            self.new_icon
+            self.new_icon,
+            bg_color=(46, 204, 113),
+            hover_color=(72, 230, 140)
         )
 
         self.popup_exit_button = Button(
-            WIDTH//2 + 20,
-            HEIGHT//2 + 150,
-            170,
-            50,
+            WIDTH//2 + 10,
+            HEIGHT//2 + 300,
+            220,
+            70,
             "EXIT",
-            self.exit_icon
+            self.exit_icon,
+            bg_color=(231, 76, 60),
+            hover_color=(255, 110, 90)
         )
-
         # ---------- Sounds ----------
 
         self.click_sound = pygame.mixer.Sound("assets/sounds/click.wav")
@@ -316,7 +349,7 @@ class Game:
 
             self.confetti = []
 
-            for _ in range(20):
+            for _ in range(2000):
                 self.confetti.append(Confetti())
 
             self.previous_win_state = True
@@ -329,25 +362,11 @@ class Game:
         # ---------- Draw Confetti ----------
         if self.logic.game_won:
 
-            # Keep spawning new confetti
-            import random
-            for _ in range(random.randint(3, 8)):
-                self.confetti.append(Confetti())
-
             # Update & draw
             for particle in self.confetti:
                 particle.update()
                 particle.draw(self.screen)
-
             # Remove particles that leave the screen
-            self.confetti = [
-                particle
-                for particle in self.confetti
-                if particle.y < HEIGHT + 100
-            ]
-            if len(self.confetti) > 350:
-                self.confetti = self.confetti[-350:]
-
             self.popup_new_button.draw(self.screen)
             self.popup_exit_button.draw(self.screen)
 

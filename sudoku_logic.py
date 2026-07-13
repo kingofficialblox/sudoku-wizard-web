@@ -43,6 +43,17 @@ class SudokuLogic:
             [set() for _ in range(9)]
             for _ in range(9)
         ]
+        # ---------- Completion Flash ----------
+        self.flash_row = None
+        self.flash_col = None
+        self.flash_box = None
+
+        self.flash_start = 0
+        self.flash_duration = 1.4
+        self.pop_scale = 1.0
+        self.score = 0
+        self.stars = 0
+        self.accuracy = 100
 
     def select(self, row, col):
         self.selected = (row, col)
@@ -113,11 +124,80 @@ class SudokuLogic:
             self.invalid_cell = None
             self.pop_cell = (row, col)
             self.pop_time = time.time()
+            self.pop_scale = 1.6
             self.notes[row][col].clear()
+            # ---------- Check completed row ----------
+            if all(self.grid[row][c] != 0 for c in range(9)):
+                self.flash_row = row
+
+            # ---------- Check completed column ----------
+            if all(self.grid[r][col] != 0 for r in range(9)):
+                self.flash_col = col
+
+            # ---------- Check completed box ----------
+            box_row = (row // 3) * 3
+            box_col = (col // 3) * 3
+
+            complete = True
+
+            for r in range(box_row, box_row + 3):
+                for c in range(box_col, box_col + 3):
+                    if self.grid[r][c] == 0:
+                        complete = False
+
+            if complete:
+                self.flash_box = (box_row, box_col)
+
+            # Start flash animation
+            if self.flash_row is not None or self.flash_col is not None or self.flash_box is not None:
+                self.flash_start = time.time()
             if self.is_solved():
                 self.game_won = True
                 self.popup_scale = 0.0
                 self.end_time = time.time()
+
+                elapsed = int(self.end_time - self.start_time)
+
+                # ---------- Accuracy ----------
+                total_inputs = 81 + self.mistakes
+
+                self.accuracy = round(
+                    (81 / total_inputs) * 100
+                )
+
+                # ---------- Score ----------
+                base = 10000
+
+                difficulty_bonus = {
+                    "easy": 0,
+                    "medium": 2500,
+                    "hard": 5000
+                }
+
+                time_penalty = elapsed * 6
+
+                mistake_penalty = self.mistakes * 400
+
+                self.score = max(
+                    1000,
+                    base
+                    + difficulty_bonus[self.difficulty.lower()]
+                    - time_penalty
+                    - mistake_penalty
+                )
+
+                # ---------- Stars ----------
+                if self.mistakes == 0:
+                    self.stars = 5
+                elif self.mistakes <= 2:
+                    self.stars = 4
+                elif self.mistakes <= 4:
+                    self.stars = 3
+                elif self.mistakes <= 6:
+                    self.stars = 2
+                else:
+                    self.stars = 1
+
                 return "WIN"
 
             return True

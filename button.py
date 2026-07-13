@@ -7,7 +7,7 @@ BADGE_TEXT = (255, 255, 255)
 
 class Button:
 
-    def __init__(self, x, y, width, height, text, icon = None):
+    def __init__(self,x,y,width,height,text,icon=None,bg_color=(245,245,250),hover_color=(255,255,255)):
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
         self.icon = icon
@@ -28,6 +28,8 @@ class Button:
             (42, 42)
         )
         self.hover_amount = 0
+        self.bg_color = bg_color
+        self.hover_color = hover_color
         self.count = None
         self.selected = False
 
@@ -75,25 +77,38 @@ class Button:
         # ---------------- Colors ----------------
         if self.selected:
             fill = (225, 238, 255)
-            border = PRIMARY
+            border = (0,0,0)
             text_color = PRIMARY
         else:
             fill = (
-                int(250 - 15 * self.hover_amount),
-                int(250 - 8 * self.hover_amount),
-                255
+                int(self.bg_color[0] + (self.hover_color[0] - self.bg_color[0]) * self.hover_amount),
+                int(self.bg_color[1] + (self.hover_color[1] - self.bg_color[1]) * self.hover_amount),
+                int(self.bg_color[2] + (self.hover_color[2] - self.bg_color[2]) * self.hover_amount)
             )
 
-            border = (
-                int(215 - 40 * self.hover_amount),
-                int(220 - 50 * self.hover_amount),
-                int(228 - 20 * self.hover_amount)
-            )
+            border = (0, 0, 0)
 
             text_color = (
                 int(45 - 10 * self.hover_amount),
                 int(45 + 40 * self.hover_amount),
                 int(45 + 170 * self.hover_amount)
+            )
+        if hover:
+            glow = pygame.Surface(
+                (draw_rect.width + 18, draw_rect.height + 18),
+                pygame.SRCALPHA
+            )
+
+            pygame.draw.rect(
+                glow,
+                (*PRIMARY, 45),
+                glow.get_rect(),
+                border_radius=18
+            )
+
+            screen.blit(
+                glow,
+                (draw_rect.x - 9, draw_rect.y - 9)
             )
 
         # Button
@@ -108,7 +123,7 @@ class Button:
             screen,
             border,
             draw_rect,
-            3 if self.selected else 2,
+            2,
             border_radius=12
         )
 
