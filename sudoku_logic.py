@@ -6,6 +6,7 @@ import generator
 class SudokuLogic:
 
     def __init__(self, difficulty="medium"):
+        difficulty = difficulty.lower()
         self.difficulty = difficulty.capitalize()
 
         self.selected = None
@@ -54,6 +55,14 @@ class SudokuLogic:
         self.score = 0
         self.stars = 0
         self.accuracy = 100
+        self.score_pop_time = 0
+        self.score_pop_type = None
+        self.score_popup_text = None
+        self.score_popup_color = None
+        self.score_popup_time = 0
+        self.score_popup_y = 0
+        
+
 
     def select(self, row, col):
         self.selected = (row, col)
@@ -94,6 +103,16 @@ class SudokuLogic:
                     return False
 
         return True
+    def show_score_popup(self, amount):
+        if amount > 0:
+            self.score_popup_text = f"+{amount}"
+            self.score_popup_color = (40, 190, 70)
+        else:
+            self.score_popup_text = str(amount)
+            self.score_popup_color = (220, 50, 50)
+
+        self.score_popup_time = time.time()
+        self.score_popup_y = 0
 
     def place_number(self, number, notes_mode=False):
         if self.selected is None:
@@ -121,18 +140,31 @@ class SudokuLogic:
         # Correct number
         if number == self.solution[row][col]:
             self.grid[row][col] = number
+            self.score += 100
+            self.show_score_popup(100)
+            self.score_pop_time = time.time()
+            self.score_pop_type = "up"
             self.invalid_cell = None
             self.pop_cell = (row, col)
             self.pop_time = time.time()
             self.pop_scale = 1.6
             self.notes[row][col].clear()
+            
             # ---------- Check completed row ----------
             if all(self.grid[row][c] != 0 for c in range(9)):
                 self.flash_row = row
+                self.score += 500
+                self.show_score_popup(500)
+                self.score_pop_time = time.time()
+                self.score_pop_type = "up"
 
             # ---------- Check completed column ----------
             if all(self.grid[r][col] != 0 for r in range(9)):
                 self.flash_col = col
+                self.score += 500
+                self.show_score_popup(500)
+                self.score_pop_time = time.time()
+                self.score_pop_type = "up"
 
             # ---------- Check completed box ----------
             box_row = (row // 3) * 3
@@ -147,12 +179,19 @@ class SudokuLogic:
 
             if complete:
                 self.flash_box = (box_row, box_col)
-
+                self.score += 1000
+                self.show_score_popup(1000)
+                self.score_pop_time = time.time()
+                self.score_pop_type = "up"
             # Start flash animation
             if self.flash_row is not None or self.flash_col is not None or self.flash_box is not None:
                 self.flash_start = time.time()
             if self.is_solved():
                 self.game_won = True
+                self.score += 2000
+                self.show_score_popup(2000)
+                self.score_pop_type = "up"
+                self.score_pop_time = time.time()
                 self.popup_scale = 0.0
                 self.end_time = time.time()
 
@@ -163,29 +202,7 @@ class SudokuLogic:
 
                 self.accuracy = round(
                     (81 / total_inputs) * 100
-                )
-
-                # ---------- Score ----------
-                base = 10000
-
-                difficulty_bonus = {
-                    "easy": 0,
-                    "medium": 2500,
-                    "hard": 5000
-                }
-
-                time_penalty = elapsed * 6
-
-                mistake_penalty = self.mistakes * 400
-
-                self.score = max(
-                    1000,
-                    base
-                    + difficulty_bonus[self.difficulty.lower()]
-                    - time_penalty
-                    - mistake_penalty
-                )
-
+                )               
                 # ---------- Stars ----------
                 if self.mistakes == 0:
                     self.stars = 5
@@ -203,6 +220,10 @@ class SudokuLogic:
             return True
         else:
             self.mistakes += 1
+            self.score = max(0, self.score - 150)
+            self.show_score_popup(-150)
+            self.score_pop_time = time.time()
+            self.score_pop_type = "down"
             self.invalid_cell = (row, col)
             self.invalid_number = number
             self.invalid_time = time.time()
@@ -229,6 +250,10 @@ class SudokuLogic:
 
         row, col = random.choice(empty_cells)
         self.grid[row][col] = self.solution[row][col]
+        self.score = max(0, self.score - 100)
+        self.show_score_popup(-100)
+        self.score_pop_time = time.time()
+        self.score_pop_type = "down"
         self.fixed[row][col] = True
 
     def restart(self):
@@ -256,10 +281,15 @@ class SudokuLogic:
         self.invalid_time = 0
 
         self.start_time = time.time()
+        self.score = 0
+        self.score_pop_time = time.time()
+        self.score_pop_type = None
 
     def solve(self):
         self.grid = [row[:] for row in self.solution]
-
+        self.score = 0
+        self.score_pop_time = time.time()
+        self.score_pop_type = "down"
         self.fixed = [
             [True for _ in range(9)]
             for _ in range(9)
@@ -337,6 +367,7 @@ class SudokuLogic:
                 self.grid[row][col] = value
 
         return True
+    
     def remaining_count(self, number):
         count = 0
 
@@ -344,6 +375,7 @@ class SudokuLogic:
             count += row.count(number)
 
         return 9 - count
+
     def count_number(self, number):
         count = 0
         for row in self.grid:

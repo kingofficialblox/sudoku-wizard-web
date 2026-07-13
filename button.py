@@ -134,7 +134,7 @@ class Button:
             text_color
         )
 
-        spacing = 10
+        spacing = 14
 
         # -----------------------------
         # Button with icon
@@ -145,6 +145,10 @@ class Button:
             start_x = draw_rect.centerx - total_width // 2
 
             # Icon position
+            icon = pygame.transform.smoothscale(
+                self.icon,
+                (32, 32)
+            )
             icon_x = start_x
             icon_y = draw_rect.centery - self.icon.get_height() // 2
 

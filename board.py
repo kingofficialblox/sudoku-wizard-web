@@ -28,6 +28,13 @@ class Board:
         self.target_icon = pygame.image.load(
             "assets/images/target.png"
         ).convert_alpha()
+        self.accuracy_icon = pygame.image.load(
+            "assets/images/accuracy.png"
+        ).convert_alpha()
+
+        self.score_icon = pygame.image.load(
+            "assets/images/score.png"
+        ).convert_alpha()
 
         self.star_icon = pygame.image.load(
             "assets/images/star.png"
@@ -39,19 +46,37 @@ class Board:
         self.new_icon = pygame.image.load(
             "assets/images/new_game.png"
         ).convert_alpha()
-        self.trophy = pygame.transform.smoothscale(self.trophy, (120, 120))
+        self.score_icon = pygame.image.load(
+            "assets/images/score.png"
+        ).convert_alpha()
+
+
+        self.trophy = pygame.transform.smoothscale(self.trophy, (250, 250))
 
         self.timer_icon = pygame.transform.smoothscale(self.timer_icon, (40, 40))
 
         self.mistake_icon = pygame.transform.smoothscale(self.mistake_icon, (40, 40))
 
         self.target_icon = pygame.transform.smoothscale(self.target_icon, (40, 40))
+        self.accuracy_icon = pygame.transform.smoothscale(
+            self.accuracy_icon,
+            (40, 40)
+        )
 
+        self.score_icon = pygame.transform.smoothscale(
+            self.score_icon,
+            (40, 40)
+        )
         self.star_icon = pygame.transform.smoothscale(self.star_icon, (100, 100))     
 
         self.exit_icon = pygame.transform.smoothscale(self.exit_icon, (30, 30))
         
         self.new_icon = pygame.transform.smoothscale(self.new_icon,(30, 30))
+
+        self.score_icon = pygame.transform.smoothscale(
+            self.score_icon,
+            (34, 34)
+        )
 
         # ---------- Fonts ----------
 
@@ -90,6 +115,10 @@ class Board:
             "assets/fonts/Poppins-Bold.ttf",
             36
         )
+        self.score_font = pygame.font.Font(
+            "assets/fonts/Poppins-Bold.ttf",
+            34
+        )
         # ---------- Smooth Selection Animation ----------
         self.highlight_x = BOARD_X
         self.highlight_y = BOARD_Y
@@ -97,6 +126,7 @@ class Board:
         self.target_x = BOARD_X
         self.target_y = BOARD_Y
         self.pulse_time = 0
+        self.display_score = 0
 
     def select(self, mouse_pos):
 
@@ -114,7 +144,7 @@ class Board:
         # ---------- Header Background ----------
         pygame.draw.rect(
             screen,
-            (235, 240, 248),      # light blue-grey
+            (115,95,190),      # light blue-grey
             (0, 0, WIDTH, HEADER_HEIGHT)
         )
 
@@ -132,35 +162,7 @@ class Board:
             15,
             WIDTH - 30,
             HEADER_HEIGHT - 15
-        )
-
-        # Shadow
-        shadow = header_rect.copy()
-        shadow.y += 4
-
-        pygame.draw.rect(
-            screen,
-            (195, 200, 210),
-            shadow,
-            border_radius=20
-        )
-
-        # Header Card
-        pygame.draw.rect(
-            screen,
-            (250, 252, 255),
-            header_rect,
-            border_radius=20
-        )
-
-        pygame.draw.rect(
-            screen,
-            (0, 0, 0),
-            header_rect,
-            2,
-            border_radius=20
-        )
-
+        )      
         pygame.draw.line(
             screen,
             (212, 218, 228),
@@ -309,6 +311,148 @@ class Board:
             mistakes,
             mistakes.get_rect(center=right_card.center)
         )
+        
+        score_card = pygame.Rect(
+            BOARD_X + CELL_SIZE * 9 + 30,
+            BOARD_Y + 20,
+            220,
+            110
+        )
+
+        shadow = score_card.copy()
+        shadow.y += 4
+
+        pygame.draw.rect(
+            screen,
+            (200,205,215),
+            shadow,
+            border_radius=18
+        )
+
+        pygame.draw.rect(
+            screen,
+            (255,255,255),
+            score_card,
+            border_radius=18
+        )
+
+        pygame.draw.rect(
+            screen,
+            (0,0,0),
+            score_card,
+            2,
+            border_radius=18
+        )
+        screen.blit(
+            self.score_icon,
+            (score_card.x + 15,
+             score_card.y + 13)
+        )
+        label = self.info_font.render(
+            "Score",
+            True,
+            (90,90,90)
+        )
+
+        screen.blit(
+            label,
+            (score_card.x + 58,
+             score_card.y + 15)
+        )
+        if abs(self.logic.score - self.display_score) < 1:
+            self.display_score = self.logic.score
+        else:
+            self.display_score += (
+                self.logic.score - self.display_score
+            ) * 0.15
+        if self.logic.score == 0:
+            self.display_score = 0
+
+        # ---------- Score Pop Animation ----------
+        elapsed = time.time() - self.logic.score_pop_time
+
+        score_color = (130, 60, 210)      # Default purple
+        scale = 1.0
+
+        if elapsed < 0.20:
+
+            progress = elapsed / 0.20
+
+            # Same easing as Sudoku number pop
+            scale = 1 + (1.6 - 1) * ((1 - progress) ** 2)
+
+            if self.logic.score_pop_type == "up":
+                score_color = (35, 185, 70)
+
+            elif self.logic.score_pop_type == "down":
+                score_color = (220, 45, 45)
+
+        score = self.score_font.render(
+            f"{int(self.display_score):,}",
+            True,
+            score_color
+        )
+
+        if scale != 1.0:
+
+            new_size = (
+                int(score.get_width() * scale),
+                int(score.get_height() * scale)
+            )
+
+            score = pygame.transform.smoothscale(
+                score,
+                new_size
+            )
+
+        score_rect = score.get_rect(
+            center=(
+                score_card.centerx,
+                score_card.y + 70
+            )
+        )
+
+        screen.blit(score, score_rect)
+        # ---------- Floating Score Popup ----------
+
+        if self.logic.score_popup_text:
+
+            elapsed = time.time() - self.logic.score_popup_time
+
+            if elapsed < 1:
+
+                self.logic.score_popup_y -= 1
+
+                popup_font = pygame.font.Font(
+                    "assets/fonts/Poppins-Bold.ttf",
+                    32
+                )
+
+                popup = popup_font.render(
+                    self.logic.score_popup_text,
+                    True,
+                    self.logic.score_popup_color
+                )
+
+                popup.set_alpha(
+                    int(255 * (1 - elapsed))
+                )
+
+                popup_rect = popup.get_rect(
+                    center=(
+                        score_card.centerx,
+                        score_card.y - 20 + self.logic.score_popup_y
+                    )
+                )
+
+                screen.blit(
+                    popup,
+                    popup_rect
+                )
+
+            else:
+                self.logic.score_popup_text = None
+
 
     def draw_highlights(self, screen):
         if self.logic.hover:
@@ -446,7 +590,7 @@ class Board:
 
         pygame.draw.circle(
             glow,
-            (70, 120, 255, alpha),
+            (255, 210, 70, alpha),
             (
                 (CELL_SIZE + 20) // 2,
                 (CELL_SIZE + 20) // 2
@@ -465,7 +609,7 @@ class Board:
         # ---------- Fill ----------
         pygame.draw.rect(
             screen,
-            (225, 238, 255),
+            (255, 246, 190),
             cell_rect,
             border_radius=12
         )
@@ -482,15 +626,15 @@ class Board:
         # ---------- Blue Border ----------
         border_width = int(3 + pulse * 2)
 
-        blue = (
-            50,
-            int(110 + pulse * 40),
-            255
+        gold = (
+            255,
+            int(195 + pulse * 25),
+            40
         )
 
         pygame.draw.rect(
             screen,
-            blue,
+            gold,
             cell_rect,
             border_width,
             border_radius=12
@@ -769,7 +913,7 @@ class Board:
         # ---------------- TROPHY ----------------
 
         trophy_x = WIDTH//2 - self.trophy.get_width()//2
-        trophy_y = popup.y + 60
+        trophy_y = popup.y + 1
         # ---------- Golden Shining Rays Behind Trophy ----------
 
         cx = WIDTH//2
@@ -777,22 +921,40 @@ class Board:
 
         rotation = time.time() * 60
 
-        for i in range(16):
-            angle = math.radians(i * 22.5 + rotation)
-            inner = 45
-            outer = 75
-            x1 = cx + math.cos(angle) * inner
-            y1 = cy + math.sin(angle) * inner
-
-            x2 = cx + math.cos(angle) * outer
-            y2 = cy + math.sin(angle) * outer
+        # Long rays
+        for i in range(20):
+            angle = math.radians(i * 18 + rotation)
 
             pygame.draw.line(
                 screen,
                 (255, 220, 80),
-                (x1, y1),
-                (x2, y2),
+                (
+                    cx + math.cos(angle) * 100,
+                    cy + math.sin(angle) * 100
+                ),
+                (
+                    cx + math.cos(angle) * 165,
+                    cy + math.sin(angle) * 165
+                ),
                 4
+            )
+
+        # Short rays between them
+        for i in range(20):
+            angle = math.radians(i * 18 + 9 + rotation)
+
+            pygame.draw.line(
+                screen,
+                (255, 240, 170),
+                (
+                    cx + math.cos(angle) * 110,
+                    cy + math.sin(angle) * 110
+                ),
+                (
+                    cx + math.cos(angle) * 155,
+                    cy + math.sin(angle) * 155
+                ),
+                2
             )
 
         screen.blit(
@@ -812,7 +974,7 @@ class Board:
         screen.blit(
             title,
             title.get_rect(
-                center=(WIDTH//2,popup.y+245)
+                center=(WIDTH//2,popup.y+300)
             )
         )
 
@@ -907,33 +1069,32 @@ class Board:
         seconds = elapsed%60
 
         stats = [
-            ("Time", f"{minutes:02}:{seconds:02}", self.timer_icon),
-            ("Mistakes", str(self.logic.mistakes), self.mistake_icon),
-            ("Difficulty", self.logic.difficulty.title(), self.target_icon),
-            ("Accuracy", f"{self.logic.accuracy}%", None),
-            ("Score", f"{self.logic.score:,}", None)
+            (self.timer_icon, "Time", f"{minutes:02}:{seconds:02}"),
+            (self.mistake_icon, "Mistakes", str(self.logic.mistakes)),
+            (self.target_icon, "Difficulty", self.logic.difficulty.title()),
+            (self.accuracy_icon, "Accuracy", f"{self.logic.accuracy}%"),
+            (self.score_icon, "Score", f"{self.logic.score:,}")
         ]
+        
 
-        label_font = pygame.font.SysFont(
-            "Segoe UI",
-            28,
-            bold=True
-        )
-
-        value_font = pygame.font.SysFont(
-            "Segoe UI",
+        label_font = pygame.font.Font(
+            "assets/fonts/Poppins-Regular.ttf",
             28
         )
 
+        value_font = pygame.font.Font(
+            "assets/fonts/Poppins-Bold.ttf",
+            30
+        )
         y = stats_card.y + 35
 
-        for label, value, icon in stats:
+        for icon,label,value in stats:
             if icon:
                 screen.blit(
                     icon,
                     (
-                        stats_card.x + 20,
-                        y
+                        stats_card.x + 25,
+                        y - 4
                     )
                 )
 
@@ -943,12 +1104,25 @@ class Board:
                 (90, 90, 90)
             )
 
+            # ---------- Value Colors ----------
+            if label == "Time":
+                value_color = (40, 110, 255)      # Blue
+            elif label == "Mistakes":
+                value_color = (225, 50, 50)       # Red
+            elif label == "Difficulty":
+                value_color = (35, 35, 35)        # Black
+            elif label == "Accuracy":
+                value_color = (34, 170, 70)       # Green
+            elif label == "Score":
+                value_color = (145, 70, 255)      # Purple
+            else:
+                value_color = TEXT
+
             v = value_font.render(
                 value,
                 True,
-                TEXT
+                value_color
             )
-
             screen.blit(
                 l,
                 (

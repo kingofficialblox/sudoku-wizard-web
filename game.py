@@ -24,66 +24,126 @@ class Game:
         self.logic = SudokuLogic()
 
         self.board = Board(self.logic)
-        board_bottom = BOARD_Y + CELL_SIZE * 9
-        keypad_y = board_bottom + 20
-        button_y1 = BOARD_Y + CELL_SIZE * 9 + 25
-        button_y2 = button_y1 + 65
+        # ---------- Popup Icons ----------
 
-        button_width = 140
-        button_height = 48
+        self.new_icon = pygame.image.load(
+            "assets/images/new_game.png"
+        ).convert_alpha()
+
+        self.exit_icon = pygame.image.load(
+            "assets/images/exit.png"
+        ).convert_alpha()
+
+        self.restart_icon = pygame.image.load(
+            "assets/images/restart.png"
+        ).convert_alpha()
+
+        self.undo_icon = pygame.image.load(
+            "assets/images/undo.png"
+        ).convert_alpha()
+
+        self.hint_icon = pygame.image.load(
+            "assets/images/hint.png"
+        ).convert_alpha()
+
+        self.solve_icon = pygame.image.load(
+            "assets/images/solve.png"
+        ).convert_alpha()
+
+        self.new_icon = pygame.transform.smoothscale(
+            self.new_icon,
+            (30, 30)
+        )
+
+        self.exit_icon = pygame.transform.smoothscale(
+            self.exit_icon,
+            (30, 30)
+        )
+
+        self.restart_icon = pygame.transform.smoothscale(
+            self.restart_icon,
+            (30, 30)
+        )
+
+        self.undo_icon = pygame.transform.smoothscale(
+            self.undo_icon,
+            (30, 30)
+        )
+
+        self.hint_icon = pygame.transform.smoothscale(
+            self.hint_icon,
+            (30, 30)
+        )
+
+        self.solve_icon = pygame.transform.smoothscale(
+            self.solve_icon,
+            (30, 30)
+        )
+        side_x = BOARD_X + CELL_SIZE * 9 + 30
+        button_width = 220
+        button_height = 52
         gap = 15
-
-        # ---------- First Row ----------
-        start_x = (WIDTH - (5 * button_width + 4 * gap)) // 2
-
+        button_y1 = BOARD_Y + 150
+        start_x = side_x
+        board_bottom = BOARD_Y + CELL_SIZE * 9
+        button_y2 = board_bottom + 25
+        
+        
+        
+        
         self.new_game_button = Button(
             start_x,
-            button_y1,
+            button_y1 + 0,
             button_width,
             button_height,
             "New",
-            bg_color=(46, 204, 113),
-            hover_color=(72, 230, 140)
+            self.new_icon,
+            bg_color=(255,255,255),
+            hover_color=(245,248,255)
         )
 
         self.restart_button = Button(
-            start_x + (button_width + gap) * 1,
-            button_y1,
+            start_x,
+            button_y1 + 70,
             button_width,
             button_height,
-            "Restart",
-            bg_color=(46, 204, 113),
-            hover_color=(72, 230, 140)
+            "Reset",
+            self.restart_icon,
+            bg_color=(255,255,255),
+            hover_color=(245,248,255)
         )
 
         self.undo_button = Button(
-           start_x + (button_width + gap) * 2,
-           button_y1,
-           button_width,
-           button_height,
-           "Undo",
-           bg_color=(46, 204, 113),
-           hover_color=(72, 230, 140)
+            start_x,
+            button_y1 + 140,
+            button_width,
+            button_height,
+            "Undo",
+            self.undo_icon,
+            bg_color=(255,255,255),
+            hover_color=(245,248,255)
         )
 
         self.hint_button = Button(
-            start_x + (button_width + gap) * 3,
-            button_y1,
+            start_x,
+            button_y1 + 210,
             button_width,
             button_height,
             "Hint",
-            bg_color=(46, 204, 113),
-            hover_color=(72, 230, 140)
+            self.hint_icon,
+            bg_color=(255,255,255),
+            hover_color=(245,248,255)
         )
 
         self.solve_button = Button(
-            start_x + (button_width + gap) * 4,
-            button_y1,
+            start_x,
+            button_y1 + 280,
             button_width,
             button_height,
             "Solve",
-            bg_color=(46, 204, 113),
-            hover_color=(72, 230, 140)
+            self.solve_icon,
+            bg_color=(255,255,255),
+            hover_color=(245,248,255)
         )
 
         # ---------- Second Row ----------
@@ -145,28 +205,10 @@ class Game:
 
         self.running = True
 
-        self.difficulty = "medium"
-
+        
         self.notes_mode = False
-        # ---------- Popup Icons ----------
+        
 
-        self.new_icon = pygame.image.load(
-            "assets/images/new_game.png"
-        ).convert_alpha()
-
-        self.exit_icon = pygame.image.load(
-            "assets/images/exit.png"
-        ).convert_alpha()
-
-        self.new_icon = pygame.transform.smoothscale(
-            self.new_icon,
-            (30, 30)
-        )
-
-        self.exit_icon = pygame.transform.smoothscale(
-            self.exit_icon,
-            (30, 30)
-        )
         # ---------- Win Popup Buttons ----------
 
         self.popup_new_button = Button(
@@ -277,6 +319,7 @@ class Game:
                 elif self.restart_button.clicked(pos):
                     self.click_sound.play()
                     self.logic.restart()
+                    self.board.display_score = 0
 
                 for i, button in enumerate(self.number_buttons):
                     if button.clicked(pos):
@@ -349,7 +392,7 @@ class Game:
 
             self.confetti = []
 
-            for _ in range(2000):
+            for _ in range(800):
                 self.confetti.append(Confetti())
 
             self.previous_win_state = True
@@ -397,11 +440,17 @@ class Game:
         pygame.display.flip()
 
     def new_game(self, difficulty):
-        self.difficulty = difficulty
-        self.logic = SudokuLogic(difficulty)
+        self.difficulty = difficulty.lower()
+
+        self.logic = SudokuLogic(
+            self.difficulty
+        )
+
+        self.logic.difficulty = self.difficulty.capitalize()
+
         self.board.logic = self.logic
-        self.logic.game_won = False
-        
+
+        self.board.display_score = 0
 
     def run(self):
 
