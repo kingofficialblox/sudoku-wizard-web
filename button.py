@@ -7,7 +7,18 @@ BADGE_TEXT = (255, 255, 255)
 
 class Button:
 
-    def __init__(self,x,y,width,height,text,icon=None,bg_color=(245,245,250),hover_color=(255,255,255)):
+    def __init__(
+    self,
+    x,
+    y,
+    width,
+    height,
+    text,
+    icon=None,
+    bg_color=(245,245,250),
+    hover_color=(255,255,255),
+    border_color=(0,0,0)
+):
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
         self.icon = icon
@@ -30,6 +41,7 @@ class Button:
         self.hover_amount = 0
         self.bg_color = bg_color
         self.hover_color = hover_color
+        self.border_color = border_color
         self.count = None
         self.selected = False
 
@@ -86,7 +98,7 @@ class Button:
                 int(self.bg_color[2] + (self.hover_color[2] - self.bg_color[2]) * self.hover_amount)
             )
 
-            border = (0, 0, 0)
+            border = self.border_color
 
             text_color = (
                 int(45 - 10 * self.hover_amount),

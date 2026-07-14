@@ -214,7 +214,7 @@ class Board:
         # Header
         # ---------- Header Stat Cards ----------
 
-        card_w = 300
+        card_w = 360
         card_h = 72
         card_y = 80
 
@@ -261,17 +261,14 @@ class Board:
                 border_radius=18
             )
 
-        if self.logic.game_won:
-            elapsed = int(self.logic.end_time - self.logic.start_time)
-        else:
-            elapsed = int(time.time() - self.logic.start_time)
+        elapsed = self.logic.get_elapsed_time()
+        
         minutes = elapsed // 60
         seconds = elapsed % 60
-        
 
         # ---------- Left ----------
         difficulty = self.header_font.render(
-            f"Difficulty : {self.logic.difficulty}",
+            f"DIFFICULTY : {self.logic.difficulty}",
             True,
             TEXT
         )
@@ -286,7 +283,7 @@ class Board:
 
         # ---------- Centre ----------
         timer = self.header_font.render(
-            f"Time : {minutes:02}:{seconds:02}",
+            f"TIME : {minutes:02}:{seconds:02}",
             True,
             TEXT
         )
@@ -300,9 +297,9 @@ class Board:
 
         # ---------- Right ----------
         mistakes = self.header_font.render(
-            f"Mistakes : {self.logic.mistakes}",
+            f"MISTAKES : {self.logic.mistakes}",
             True,
-            RED
+            BLACK
         )
 
         
@@ -349,7 +346,7 @@ class Board:
              score_card.y + 13)
         )
         label = self.info_font.render(
-            "Score",
+            "SCORE",
             True,
             (90,90,90)
         )
@@ -1069,11 +1066,11 @@ class Board:
         seconds = elapsed%60
 
         stats = [
-            (self.timer_icon, "Time", f"{minutes:02}:{seconds:02}"),
-            (self.mistake_icon, "Mistakes", str(self.logic.mistakes)),
-            (self.target_icon, "Difficulty", self.logic.difficulty.title()),
-            (self.accuracy_icon, "Accuracy", f"{self.logic.accuracy}%"),
-            (self.score_icon, "Score", f"{self.logic.score:,}")
+            (self.timer_icon, "TIME", f"{minutes:02}:{seconds:02}"),
+            (self.mistake_icon, "MISTAKES", str(self.logic.mistakes)),
+            (self.target_icon, "DIFFICULTY", self.logic.difficulty.title()),
+            (self.accuracy_icon, "ACCURACY", f"{self.logic.accuracy}%"),
+            (self.score_icon, "SCORE", f"{self.logic.score:,}")
         ]
         
 
@@ -1105,15 +1102,15 @@ class Board:
             )
 
             # ---------- Value Colors ----------
-            if label == "Time":
+            if label == "TIME":
                 value_color = (40, 110, 255)      # Blue
-            elif label == "Mistakes":
+            elif label == "MISTAKES":
                 value_color = (225, 50, 50)       # Red
-            elif label == "Difficulty":
+            elif label == "DIFFICULTY":
                 value_color = (35, 35, 35)        # Black
-            elif label == "Accuracy":
+            elif label == "ACCURACY":
                 value_color = (34, 170, 70)       # Green
-            elif label == "Score":
+            elif label == "SCORE":
                 value_color = (145, 70, 255)      # Purple
             else:
                 value_color = TEXT

@@ -5,7 +5,7 @@ import generator
 
 class SudokuLogic:
 
-    def __init__(self, difficulty="medium"):
+    def __init__(self, difficulty="MEDIUM"):
         difficulty = difficulty.lower()
         self.difficulty = difficulty.capitalize()
 
@@ -40,6 +40,8 @@ class SudokuLogic:
         self.popup_scale = 0.0
         # Timer
         self.start_time = time.time()
+        self.paused = False
+        self.pause_start = 0
         self.notes = [
             [set() for _ in range(9)]
             for _ in range(9)
@@ -61,8 +63,28 @@ class SudokuLogic:
         self.score_popup_color = None
         self.score_popup_time = 0
         self.score_popup_y = 0
-        
+    
+    def get_elapsed_time(self):
+        if self.game_won:
+            return int(self.end_time - self.start_time)
 
+        if self.paused:
+            return int(self.pause_start - self.start_time)
+
+        return int(time.time() - self.start_time)
+
+    def pause(self):
+        if not self.paused:
+            self.paused = True
+            self.pause_popup_scale = 0.75
+            self.pause_overlay_alpha = 0
+            self.pause_buttons_offset = 25
+            self.pause_start = time.time()
+
+    def resume(self):
+        if self.paused:
+            self.start_time += time.time() - self.pause_start
+            self.paused = False
 
     def select(self, row, col):
         self.selected = (row, col)
@@ -284,6 +306,9 @@ class SudokuLogic:
         self.score = 0
         self.score_pop_time = time.time()
         self.score_pop_type = None
+        self.paused = False
+        self.pause_start = 0
+        self.end_time = None
 
     def solve(self):
         self.grid = [row[:] for row in self.solution]
@@ -381,3 +406,4 @@ class SudokuLogic:
         for row in self.grid:
             count += row.count(number)
         return count
+    

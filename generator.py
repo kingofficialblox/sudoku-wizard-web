@@ -44,18 +44,18 @@ class SudokuGenerator:
                             self.board[row][col] = 0
                     return False
         return True
-    def generate(self,difficulty="medium"):
+    def generate(self,difficulty="MEDIUM"):
         self.board = [[0 for _ in range(9)] for _ in range(9)]
         self.fill_board()
         self.solution = [row[:] for row in self.board]
 
         self.remove_numbers(difficulty)
         return self.board
-    def remove_numbers(self, difficulty="medium"):
+    def remove_numbers(self, difficulty="MEDIUM"):
 
         if difficulty == "easy":
             cells_to_remove = 35
-        elif difficulty == "hard":
+        elif difficulty == "HARD":
             cells_to_remove = 55
         else:
             cells_to_remove = 45
