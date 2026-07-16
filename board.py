@@ -3,6 +3,7 @@ import math
 import time
 
 from constants import *
+import themes
 
 
 class Board:
@@ -139,8 +140,17 @@ class Board:
             row = (y - BOARD_Y) // CELL_SIZE
 
             self.logic.select(row, col)
-    def draw_background(self, screen):
-        screen.fill(BACKGROUND)
+    def draw_background(self, screen, theme):
+
+        screen.fill(theme["background"])
+        background = theme["background"]
+        board = theme["board"]
+        grid = theme["grid"]
+        shadow = theme["shadow"]
+        text = theme["text"]
+        secondary = theme["secondary"]
+        popup = theme["popup"]
+        popup_border = theme["popup_border"]
         # ---------- Header Background ----------
         pygame.draw.rect(
             screen,
@@ -181,7 +191,7 @@ class Board:
 
         pygame.draw.rect(
             screen,
-            (210, 215, 225),
+            shadow,
             shadow_rect,
             border_radius=14
         )
@@ -196,20 +206,20 @@ class Board:
 
         pygame.draw.rect(
             screen,
-            (255, 255, 255),
+            board,
             board_rect,
             border_radius=28
         )
 
         pygame.draw.rect(
             screen,
-            (70, 70, 70),
+            grid,
             board_rect,
             3,
             border_radius=28
         )
 
-    def draw_ui(self, screen):
+    def draw_ui(self, screen, theme):
 
         # Header
         # ---------- Header Stat Cards ----------
@@ -241,21 +251,21 @@ class Board:
 
             pygame.draw.rect(
                 screen,
-                (205, 210, 220),
+                theme["shadow"],
                 shadow,
                 border_radius=18
             )
 
             pygame.draw.rect(
                 screen,
-                (255, 255, 255),
+                theme["board"],
                 card,
                 border_radius=18
             )
 
             pygame.draw.rect(
                 screen,
-                (0, 0, 0),
+                theme["grid"],
                 card,
                 2,
                 border_radius=18
@@ -270,7 +280,7 @@ class Board:
         difficulty = self.header_font.render(
             f"DIFFICULTY : {self.logic.difficulty}",
             True,
-            TEXT
+            theme["text"]
         )
 
         screen.blit(
@@ -285,7 +295,7 @@ class Board:
         timer = self.header_font.render(
             f"TIME : {minutes:02}:{seconds:02}",
             True,
-            TEXT
+            theme["text"]
         )
 
         
@@ -299,7 +309,7 @@ class Board:
         mistakes = self.header_font.render(
             f"MISTAKES : {self.logic.mistakes}",
             True,
-            BLACK
+            theme["text"]
         )
 
         
@@ -321,21 +331,21 @@ class Board:
 
         pygame.draw.rect(
             screen,
-            (200,205,215),
+            theme["shadow"],
             shadow,
             border_radius=18
         )
 
         pygame.draw.rect(
             screen,
-            (255,255,255),
+            theme["board"],
             score_card,
             border_radius=18
         )
 
         pygame.draw.rect(
             screen,
-            (0,0,0),
+            theme["grid"],
             score_card,
             2,
             border_radius=18
@@ -348,7 +358,7 @@ class Board:
         label = self.info_font.render(
             "SCORE",
             True,
-            (90,90,90)
+            theme["secondary"]
         )
 
         screen.blit(
@@ -451,7 +461,7 @@ class Board:
                 self.logic.score_popup_text = None
 
 
-    def draw_highlights(self, screen):
+    def draw_highlights(self, screen, theme):
         if self.logic.hover:
             hover_row, hover_col = self.logic.hover
 
@@ -465,14 +475,14 @@ class Board:
 
                 pygame.draw.rect(
                     screen,
-                    (242, 247, 255),
+                    theme["highlight"],
                     hover_rect,
                     border_radius=10
                 )
 
                 pygame.draw.rect(
                     screen,
-                    (170, 205, 255),
+                    theme["highlight"],
                     hover_rect,
                     2,
                     border_radius=10
@@ -504,7 +514,7 @@ class Board:
             for c in range(box_col, box_col + 3):
                pygame.draw.rect(
                    screen,
-                   (244,247,255),
+                   theme["box_highlight"],
                    pygame.Rect(
                        BOARD_X + c*CELL_SIZE + 3,
                        BOARD_Y + r*CELL_SIZE + 3,
@@ -521,7 +531,7 @@ class Board:
         for c in range(9):
             pygame.draw.rect(
                 screen,
-                HIGHLIGHT,
+                theme["row_highlight"],
                 pygame.Rect(
                     BOARD_X + c * CELL_SIZE + 3,
                     BOARD_Y + row * CELL_SIZE + 3,
@@ -538,7 +548,7 @@ class Board:
         for r in range(9):
             pygame.draw.rect(
                 screen,
-                HIGHLIGHT,
+                theme["column_highlight"],
                 pygame.Rect(
                     BOARD_X + col * CELL_SIZE + 3,
                     BOARD_Y + r * CELL_SIZE + 3,
@@ -553,7 +563,7 @@ class Board:
                     if self.logic.grid[r][c] == self.logic.highlight_number:
                         pygame.draw.rect(
                             screen,
-                            (255,245,170),
+                            theme["same_number"],
                             pygame.Rect(
                                 BOARD_X + c * CELL_SIZE + 3,
                                 BOARD_Y + r * CELL_SIZE + 3,
@@ -587,7 +597,10 @@ class Board:
 
         pygame.draw.circle(
             glow,
-            (255, 210, 70, alpha),
+            (
+                *theme["selected_glow"],
+                alpha
+            ),
             (
                 (CELL_SIZE + 20) // 2,
                 (CELL_SIZE + 20) // 2
@@ -606,7 +619,7 @@ class Board:
         # ---------- Fill ----------
         pygame.draw.rect(
             screen,
-            (255, 246, 190),
+            theme["selected_fill"],
             cell_rect,
             border_radius=12
         )
@@ -614,7 +627,7 @@ class Board:
         # ---------- White Inner Border ----------
         pygame.draw.rect(
             screen,
-            (255,255,255),
+            theme["selected_border"],
             cell_rect,
             2,
             border_radius=12
@@ -623,11 +636,7 @@ class Board:
         # ---------- Blue Border ----------
         border_width = int(3 + pulse * 2)
 
-        gold = (
-            255,
-            int(195 + pulse * 25),
-            40
-        )
+        gold = theme["selected_outline"]
 
         pygame.draw.rect(
             screen,
@@ -709,7 +718,7 @@ class Board:
             self.logic.flash_box = None
 
 
-    def draw_numbers(self, screen):
+    def draw_numbers(self, screen, theme):
         for row in range(9):
             for col in range(9):
                 value = self.logic.grid[row][col]
@@ -717,13 +726,19 @@ class Board:
                     continue
 
                 if self.logic.fixed[row][col]:
-                    color = (30, 30, 30)
+                    color = theme["text"]
                 elif value != self.logic.solution[row][col]:
                     color = (215, 40, 40)
                 elif self.logic.selected == (row, col):
-                    color = (25, 70, 220)
+                    if theme == themes.DARK:
+                        color = (160, 210, 255)
+                    else:
+                        color = (25, 70, 220)
                 else:
-                    color = (55, 95, 235)
+                    if theme == themes.DARK:
+                        color = (130, 185, 255)
+                    else:
+                        color = (55, 95, 235)
                 
                 text = self.number_font.render(str(value), True, color)
 
@@ -776,7 +791,7 @@ class Board:
                 shadow = self.number_font.render(
                     str(value),
                     True,
-                    (185, 185, 185)
+                    theme["shadow"]
                 )
 
                 shadow_rect = shadow.get_rect(
@@ -823,14 +838,14 @@ class Board:
             else:
                 self.logic.invalid_cell = None
 
-    def draw_grid(self, screen):
+    def draw_grid(self, screen, theme):
         
         # ---------- Thin Lines ----------
         for i in range(10):
             if i % 3 != 0:
                 pygame.draw.line(
                     screen,
-                    (220, 225, 235),
+                    theme["secondary"],
                     (BOARD_X + i * CELL_SIZE, BOARD_Y),
                     (BOARD_X + i * CELL_SIZE, BOARD_Y + 9 * CELL_SIZE),
                     2
@@ -838,7 +853,7 @@ class Board:
 
                 pygame.draw.line(
                     screen,
-                    (220, 225, 235),
+                    theme["secondary"],
                     (BOARD_X, BOARD_Y + i * CELL_SIZE),
                     (BOARD_X + 9 * CELL_SIZE, BOARD_Y + i * CELL_SIZE),
                     2
@@ -848,7 +863,7 @@ class Board:
         for i in range(0, 10, 3):
             pygame.draw.line(
                 screen,
-                (55, 60, 70),
+                theme["grid"],
                 (BOARD_X + i * CELL_SIZE, BOARD_Y),
                 (BOARD_X + i * CELL_SIZE, BOARD_Y + 9 * CELL_SIZE),
                 4
@@ -856,13 +871,13 @@ class Board:
 
             pygame.draw.line(
                 screen,
-                (55, 60, 70),
+                theme["grid"],
                 (BOARD_X, BOARD_Y + i * CELL_SIZE),
                 (BOARD_X + 9 * CELL_SIZE, BOARD_Y + i * CELL_SIZE),
                 4
             )
 
-    def draw_win(self, screen):
+    def draw_win(self, screen, theme):
         if not self.logic.game_won:
             return
 
@@ -872,7 +887,7 @@ class Board:
         scale = min(self.logic.popup_scale, 1)
 
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 170))
+        overlay.fill((*theme["overlay"],170))
         screen.blit(overlay, (0,0))
 
 
@@ -889,14 +904,14 @@ class Board:
 
         pygame.draw.rect(
             screen,
-            (255,255,255),
+            theme["popup"],
             popup,
             border_radius=30
         )
 
         pygame.draw.rect(
             screen,
-            PRIMARY,
+            theme["popup_border"],
             popup,
             5,
             border_radius=30
@@ -965,7 +980,7 @@ class Board:
         title = self.win_font.render(
             "CONGRATULATIONS!",
             True,
-            GREEN
+            theme["success"]
         )
 
         screen.blit(
@@ -1037,14 +1052,14 @@ class Board:
 
         pygame.draw.rect(
             screen,
-            (248,250,255),
+            theme["board"],
             stats_card,
             border_radius=25
         )
 
         pygame.draw.rect(
             screen,
-            (210,215,225),
+            theme["grid"],
             stats_card,
             3,
             border_radius=25
@@ -1098,7 +1113,7 @@ class Board:
             l = label_font.render(
                 label,
                 True,
-                (90, 90, 90)
+                theme["secondary"]
             )
 
             # ---------- Value Colors ----------
@@ -1107,7 +1122,7 @@ class Board:
             elif label == "MISTAKES":
                 value_color = (225, 50, 50)       # Red
             elif label == "DIFFICULTY":
-                value_color = (35, 35, 35)        # Black
+                value_color = theme["text"]        # Black
             elif label == "ACCURACY":
                 value_color = (34, 170, 70)       # Green
             elif label == "SCORE":
@@ -1144,7 +1159,7 @@ class Board:
         
         
     
-    def draw_cell_backgrounds(self, screen):
+    def draw_cell_backgrounds(self, screen, theme):
         # ---------- 3x3 Region Backgrounds ----------
         for box_row in range(3):
             for box_col in range(3):
@@ -1156,11 +1171,20 @@ class Board:
                     CELL_SIZE * 3 - 6
                 )
 
-                color = (
-                    (248, 250, 255)
-                    if (box_row + box_col) % 2 == 0
-                    else (255, 255, 255)
-                )
+                if theme == themes.DARK:
+                    color = (
+                        (48,52,62)
+                        if (box_row + box_col) % 2 == 0
+                        else
+                        (58,62,72)
+                    )
+                else:
+                    color = (
+                        theme["board"]
+                        if (box_row + box_col) % 2 == 0
+                        else
+                        (255,255,255)
+                    )
 
                 pygame.draw.rect(
                     screen,
@@ -1169,11 +1193,11 @@ class Board:
                     border_radius=12
                 )
 
-    def draw(self, screen):
-        self.draw_background(screen)
-        self.draw_ui(screen)
-        self.draw_cell_backgrounds(screen)
-        self.draw_grid(screen)          # <-- moved here
-        self.draw_highlights(screen)
-        self.draw_numbers(screen)
-        self.draw_win(screen)
+    def draw(self, screen, theme):
+        self.draw_background(screen, theme)
+        self.draw_ui(screen, theme)
+        self.draw_cell_backgrounds(screen, theme)
+        self.draw_grid(screen, theme)          # <-- moved here
+        self.draw_highlights(screen, theme)
+        self.draw_numbers(screen, theme)
+        self.draw_win(screen, theme)

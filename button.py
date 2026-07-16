@@ -4,6 +4,8 @@ PRIMARY = (0, 120, 255)
 BADGE_BLUE = (52, 120, 246)
 BADGE_GREEN = (40, 167, 69)
 BADGE_TEXT = (255, 255, 255)
+TEXT_LIGHT = (45, 45, 45)
+TEXT_DARK = (240, 240, 240)
 
 class Button:
 
@@ -44,6 +46,7 @@ class Button:
         self.border_color = border_color
         self.count = None
         self.selected = False
+        self.text_color = TEXT_LIGHT
 
     def draw(self, screen):
         mouse_pos = pygame.mouse.get_pos()
@@ -80,7 +83,7 @@ class Button:
 
         pygame.draw.rect(
             screen,
-            (190, 195, 205),
+            self.border_color,
             shadow_rect,
             border_radius=12
         )
@@ -88,10 +91,15 @@ class Button:
         # Colors
         # ---------------- Colors ----------------
         if self.selected:
-            fill = (225, 238, 255)
-            border = (0,0,0)
+
+            fill = (180, 210, 255)
+
+            border = PRIMARY
+
             text_color = PRIMARY
+
         else:
+
             fill = (
                 int(self.bg_color[0] + (self.hover_color[0] - self.bg_color[0]) * self.hover_amount),
                 int(self.bg_color[1] + (self.hover_color[1] - self.bg_color[1]) * self.hover_amount),
@@ -100,11 +108,7 @@ class Button:
 
             border = self.border_color
 
-            text_color = (
-                int(45 - 10 * self.hover_amount),
-                int(45 + 40 * self.hover_amount),
-                int(45 + 170 * self.hover_amount)
-            )
+            text_color = self.text_color
         if hover:
             glow = pygame.Surface(
                 (draw_rect.width + 18, draw_rect.height + 18),
@@ -113,7 +117,7 @@ class Button:
 
             pygame.draw.rect(
                 glow,
-                (*PRIMARY, 45),
+                (*border, 45),
                 glow.get_rect(),
                 border_radius=18
             )
@@ -203,7 +207,7 @@ class Button:
                 # Blue badge
                 pygame.draw.circle(
                     screen,
-                    BADGE_BLUE,
+                    PRIMARY,
                     (badge_x, badge_y),
                     radius
                 )

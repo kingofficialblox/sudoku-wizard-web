@@ -210,6 +210,7 @@ class SudokuLogic:
                 self.flash_start = time.time()
             if self.is_solved():
                 self.game_won = True
+                self.win_buttons_offset = 60
                 self.score += 2000
                 self.show_score_popup(2000)
                 self.score_pop_type = "up"
