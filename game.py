@@ -54,6 +54,14 @@ class Game:
         self.settings_icon = pygame.image.load(
             "assets/images/settings.png"
         ).convert_alpha()
+        self.theme_icon = pygame.image.load(
+            "assets/images/theme.png"
+        ).convert_alpha()
+
+        self.theme_icon = pygame.transform.smoothscale(
+            self.theme_icon,
+            (32, 32)
+        )
 
         self.resume_icon = pygame.image.load(
             "assets/images/resume.png"
@@ -61,6 +69,33 @@ class Game:
         self.pause_popup_icon = pygame.image.load(
             "assets/images/pause.png"
         ).convert_alpha()
+        self.music_icon = pygame.image.load(
+            "assets/images/music.png"
+        ).convert_alpha()
+
+        self.sfx_icon = pygame.image.load(
+            "assets/images/sfx.png"
+        ).convert_alpha()
+        self.close_icon = pygame.image.load(
+            "assets/images/close.png"
+        ).convert_alpha()
+        
+
+        self.close_icon = pygame.transform.smoothscale(
+            self.close_icon,
+            (50, 50)
+        )
+        self.close_rect = self.close_icon.get_rect()
+
+        self.music_icon = pygame.transform.smoothscale(
+            self.music_icon,
+            (28, 28)
+        )
+
+        self.sfx_icon = pygame.transform.smoothscale(
+            self.sfx_icon,
+            (28, 28)
+        )
 
         self.pause_popup_icon = pygame.transform.smoothscale(
             self.pause_popup_icon,
@@ -344,18 +379,18 @@ class Game:
             260,
             60,
             "CHANGE THEME",
-            bg_color=(255,255,255),
-            hover_color=(255,248,235)
-        )      
-        self.close_settings_button = Button(
-            WIDTH//2 - 130,
-            HEIGHT//2 + 130,
-            260,
-            60,
-            "CLOSE",
+            icon=self.theme_icon,
             bg_color=(255,255,255),
             hover_color=(255,248,235)
         )
+        self.close_button = Button(
+            0,
+            0,
+            32,
+            32,
+            ""
+        )    
+        
         # ---------- Background Music ----------
         pygame.mixer.music.load(
             "assets/sounds/background.mp3"
@@ -446,7 +481,8 @@ class Game:
                             self.theme = LIGHT
 
                     # ---------- Close ----------
-                    elif self.close_settings_button.clicked(pos):
+                    
+                    elif self.close_button.clicked(pos):
                         self.play_sound(self.click_sound)
                         self.settings_open = False
 
@@ -577,12 +613,40 @@ class Game:
 
                             number_clicked = True
 
-                            self.logic.highlight_number = i + 1
+                            number = i + 1
 
-                            result = self.logic.place_number(
-                                i + 1,
-                                self.notes_mode
-                            )
+                            # If a selected cell exists and it is EMPTY,
+                            # place the number normally.
+                            if (
+                                self.logic.selected is not None
+                                and self.logic.grid[
+                                    self.logic.selected[0]
+                                ][
+                                    self.logic.selected[1]
+                                ] == 0
+                            ):
+                                result = self.logic.place_number(
+                                    number,
+                                    self.notes_mode
+                                )
+
+                            else:
+                                # Only highlight this number.
+                                self.logic.selected = None
+                                self.logic.highlight_number = number
+                                result = None
+
+                            if result == "WIN":
+                                self.play_sound(self.correct_sound)
+                                self.play_sound(self.win_sound)
+
+                            elif result is True:
+                                self.play_sound(self.correct_sound)
+
+                            elif result is False:
+                                self.play_sound(self.wrong_sound)
+
+                            break
 
                             if result == "WIN":
                                 self.play_sound(self.correct_sound)
@@ -1091,7 +1155,6 @@ class Game:
                 popup_width,
                 popup_height
             )
-
             shadow = pygame.Surface(
                 (popup.width + 30, popup.height + 30),
                 pygame.SRCALPHA
@@ -1178,6 +1241,20 @@ class Game:
             )
             # ---------- MUSIC ----------
 
+            icon_size = 24
+
+            music_y = popup.y + 195
+
+            # Music icon
+            self.screen.blit(
+                self.music_icon,
+                (
+                    popup.x + 60,
+                    music_y + (self.board.info_font.get_height() - icon_size) // 2
+                )
+            )
+
+            # Music text
             music_text = self.board.info_font.render(
                 "Music",
                 True,
@@ -1185,8 +1262,8 @@ class Game:
             )
 
             self.screen.blit(
-            music_text,
-                (popup.x + 60, popup.y + 195)
+                music_text,
+                (popup.x + 95, music_y)
             )
 
             self.music_slider = pygame.Rect(
@@ -1236,9 +1313,37 @@ class Game:
                 2
             )
 
+            music_percent = self.board.info_font.render(
+                f"{int(self.music_volume * 100)}%",
+                True,
+                self.theme["text"]
+            )
+
+            self.screen.blit(
+                music_percent,
+                (music_bar.right + 18, music_bar.centery - music_percent.get_height() // 2)
+            )
+
             self.music_slider = music_bar
+
+            self.music_slider = music_bar
+            
             # ---------- SFX ----------
 
+            icon_size = 24
+
+            sfx_y = popup.y + 285
+
+            # SFX icon
+            self.screen.blit(
+                self.sfx_icon,
+                (
+                    popup.x + 60,
+                    sfx_y + (self.board.info_font.get_height() - icon_size) // 2
+                )
+            )
+
+            # SFX text
             sfx_text = self.board.info_font.render(
                 "Sound Effects",
                 True,
@@ -1247,7 +1352,7 @@ class Game:
 
             self.screen.blit(
                 sfx_text,
-                (popup.x + 60, popup.y + 285)
+                (popup.x + 95, sfx_y)
             )
 
             self.sfx_slider = pygame.Rect(
@@ -1297,6 +1402,19 @@ class Game:
                 2
             )
 
+            sfx_percent = self.board.info_font.render(
+                f"{int(self.sfx_volume * 100)}%",
+                True,
+                self.theme["text"]
+            )
+
+            self.screen.blit(
+                sfx_percent,
+                (sfx_bar.right + 18, sfx_bar.centery - sfx_percent.get_height() // 2)
+            )
+
+            self.sfx_slider = sfx_bar
+
             self.sfx_slider = sfx_bar
             self.theme_button.rect.center = (
                 WIDTH//2,
@@ -1306,24 +1424,81 @@ class Game:
             self.theme_button.hover_color = self.theme["button_hover"]
             for b in (
                 self.theme_button,
-                self.close_settings_button,
             ):
                 b.bg_color = self.theme["button"]
                 b.hover_color = self.theme["button_hover"]
                 b.border_color = self.theme["grid"]
                 b.text_color = self.theme["text"]
+                # ---------- Close (X) ----------
+
+                self.close_button.rect.topleft = (
+                    popup.right - 44,
+                    popup.y + 12
+                )
+
+                self.close_button.bg_color = self.theme["button"]
+                self.close_button.hover_color = self.theme["button_hover"]
+                self.close_button.border_color = self.theme["grid"]
+                self.screen.blit(
+                    self.close_icon,
+                    (
+                        popup.right - 62,
+                        popup.y + 14
+                    )
+                )
+                mouse = pygame.mouse.get_pos()
+
+                if self.close_rect.collidepoint(mouse):
+
+                    glow = pygame.Surface(
+                        (
+                            self.close_rect.width + 18,
+                            self.close_rect.height + 18
+                        ),
+                        pygame.SRCALPHA
+                    )
+
+                    pygame.draw.circle(
+                        glow,
+                        (*self.theme["text"], 45),
+                        glow.get_rect().center,
+                        glow.get_width() // 2
+                    )
+
+                    self.screen.blit(
+                        glow,
+                        (
+                            self.close_rect.x - 9,
+                            self.close_rect.y - 9
+                        )
+                    )
+                self.screen.blit(
+                    self.close_icon,
+                    self.close_rect
+                )
+
+                rect = self.close_button.rect
+
+                
+                
+
+                
+
+                mouse = pygame.mouse.get_pos()
+
+                hover = self.close_button.rect.collidepoint(mouse)
+
+                
+
+                
 
             self.theme_button.draw(self.screen)            
-            self.close_settings_button.rect.center = (
-                WIDTH//2,
-                popup.y + 475 + int(self.settings_buttons_offset)
-            )
-            self.close_settings_button.bg_color = self.theme["button"]
-            self.close_settings_button.hover_color = self.theme["button_hover"]
             
             
             
-            self.close_settings_button.draw(self.screen)
+            
+            
+            
         # ---------- WIN POPUP BUTTONS ----------
         if self.logic.game_won:
             self.win_buttons_offset += (

@@ -490,73 +490,153 @@ class Board:
                
 
                 
-        if not self.logic.selected:
+        # If nothing is selected and no number is highlighted,
+        # there is nothing to draw.
+        if self.logic.selected is None and self.logic.highlight_number is None:
             return
 
-        row, col = self.logic.selected
-        # ---------- Smooth Selection Animation ----------
-        self.target_x = BOARD_X + col * CELL_SIZE
-        self.target_y = BOARD_Y + row * CELL_SIZE
+        # Only get row/col if a cell is actually selected
+        if self.logic.selected is not None:
+            row, col = self.logic.selected
+        if self.logic.selected is not None:
 
-        speed = 0.25
+            # ---------- Smooth Selection Animation ----------
+            self.target_x = BOARD_X + col * CELL_SIZE
+            self.target_y = BOARD_Y + row * CELL_SIZE
 
-        self.highlight_x += (self.target_x - self.highlight_x) * speed
-        self.highlight_y += (self.target_y - self.highlight_y) * speed
+            speed = 0.25
 
-        # -------------------------
-        # Highlight 3×3 Box
-        # -------------------------
+            self.highlight_x += (self.target_x - self.highlight_x) * speed
+            self.highlight_y += (self.target_y - self.highlight_y) * speed
 
-        box_row = (row // 3) * 3
-        box_col = (col // 3) * 3
+            # -------------------------
+            # Highlight 3×3 Box
+            # -------------------------
 
-        for r in range(box_row, box_row + 3):
-            for c in range(box_col, box_col + 3):
-               pygame.draw.rect(
-                   screen,
-                   theme["box_highlight"],
-                   pygame.Rect(
-                       BOARD_X + c*CELL_SIZE + 3,
-                       BOARD_Y + r*CELL_SIZE + 3,
-                       CELL_SIZE - 6,
-                       CELL_SIZE - 6
+            box_row = (row // 3) * 3
+            box_col = (col // 3) * 3
+
+            for r in range(box_row, box_row + 3):
+                for c in range(box_col, box_col + 3):
+                    pygame.draw.rect(
+                        screen,
+                        theme["box_highlight"],
+                        pygame.Rect(
+                            BOARD_X + c*CELL_SIZE + 3,
+                            BOARD_Y + r*CELL_SIZE + 3,
+                            CELL_SIZE - 6,
+                            CELL_SIZE - 6
+                            ),
+                            border_radius=10
+                        )
+
+            # -------------------------
+            # Highlight Row
+            # -------------------------
+
+            for c in range(9):
+                pygame.draw.rect(
+                    screen,
+                    theme["row_highlight"],
+                    pygame.Rect(
+                        BOARD_X + c * CELL_SIZE + 3,
+                        BOARD_Y + row * CELL_SIZE + 3,
+                        CELL_SIZE - 6,
+                        CELL_SIZE - 6
                     ),
-                    border_radius=10
+                    border_radius=8
                 )
 
-        # -------------------------
-        # Highlight Row
-        # -------------------------
+            # -------------------------
+            # Highlight Column
+            # -------------------------
 
-        for c in range(9):
-            pygame.draw.rect(
-                screen,
-                theme["row_highlight"],
-                pygame.Rect(
-                    BOARD_X + c * CELL_SIZE + 3,
-                    BOARD_Y + row * CELL_SIZE + 3,
-                    CELL_SIZE - 6,
-                    CELL_SIZE - 6
-                ),
-                border_radius=8
+            for r in range(9):
+                pygame.draw.rect(
+                    screen,
+                    theme["column_highlight"],
+                    pygame.Rect(
+                        BOARD_X + col * CELL_SIZE + 3,
+                        BOARD_Y + r * CELL_SIZE + 3,
+                        CELL_SIZE - 6,
+                        CELL_SIZE - 6
+                    ),
+                    border_radius=8
+                )
+            # -------------------------
+            # Selected Cell
+            # -------------------------
+
+            cell_rect = pygame.Rect(
+                int(self.highlight_x) + 3,
+                int(self.highlight_y) + 3,
+                CELL_SIZE - 6,
+                CELL_SIZE - 6
             )
 
-        # -------------------------
-        # Highlight Column
-        # -------------------------
+            # ---------- Soft Glow ----------
+            glow = pygame.Surface(
+                (CELL_SIZE + 20, CELL_SIZE + 20),
+                pygame.SRCALPHA
+            )
 
-        for r in range(9):
+            # pulsing value for glow and border
+            pulse = (math.sin(time.time() * 4) + 1) / 2
+
+            alpha = int(25 + pulse * 30)
+
+            pygame.draw.circle(
+                glow,
+                (
+                    *theme["selected_glow"],
+                    alpha
+                ),
+                (
+                    (CELL_SIZE + 20) // 2,
+                    (CELL_SIZE + 20) // 2
+                ),
+                CELL_SIZE // 2 + 8
+            )
+
+            screen.blit(
+                glow,
+                (
+                    int(self.highlight_x) - 10,
+                    int(self.highlight_y) - 10
+                )
+            )
+
+            # ---------- Fill ----------
             pygame.draw.rect(
                 screen,
-                theme["column_highlight"],
-                pygame.Rect(
-                    BOARD_X + col * CELL_SIZE + 3,
-                    BOARD_Y + r * CELL_SIZE + 3,
-                    CELL_SIZE - 6,
-                    CELL_SIZE - 6
-                ),
-                border_radius=8
+                theme["selected_fill"],
+                cell_rect,
+                border_radius=12
             )
+
+            # ---------- White Inner Border ----------
+            pygame.draw.rect(
+                screen,
+                theme["selected_border"],
+                cell_rect,
+                2,
+                border_radius=12
+            )
+
+            # ---------- Blue Border ----------
+            border_width = int(3 + pulse * 2)
+
+            gold = theme["selected_outline"]
+
+            pygame.draw.rect(
+                screen,
+                gold,
+                cell_rect,
+                border_width,
+                border_radius=12
+            )
+        elapsed = time.time() - self.logic.flash_start
+
         if self.logic.highlight_number is not None:
             for r in range(9):
                 for c in range(9):
@@ -573,80 +653,7 @@ class Board:
                             border_radius=8
                         )
 
-        # -------------------------
-        # Selected Cell
-        # -------------------------
-
-        cell_rect = pygame.Rect(
-            int(self.highlight_x) + 3,
-            int(self.highlight_y) + 3,
-            CELL_SIZE - 6,
-            CELL_SIZE - 6
-        )
-
-        # ---------- Soft Glow ----------
-        glow = pygame.Surface(
-            (CELL_SIZE + 20, CELL_SIZE + 20),
-            pygame.SRCALPHA
-        )
-
-        # pulsing value for glow and border
-        pulse = (math.sin(time.time() * 4) + 1) / 2
-
-        alpha = int(25 + pulse * 30)
-
-        pygame.draw.circle(
-            glow,
-            (
-                *theme["selected_glow"],
-                alpha
-            ),
-            (
-                (CELL_SIZE + 20) // 2,
-                (CELL_SIZE + 20) // 2
-            ),
-            CELL_SIZE // 2 + 8
-        )
-
-        screen.blit(
-            glow,
-            (
-                int(self.highlight_x) - 10,
-                int(self.highlight_y) - 10
-            )
-        )
-
-        # ---------- Fill ----------
-        pygame.draw.rect(
-            screen,
-            theme["selected_fill"],
-            cell_rect,
-            border_radius=12
-        )
-
-        # ---------- White Inner Border ----------
-        pygame.draw.rect(
-            screen,
-            theme["selected_border"],
-            cell_rect,
-            2,
-            border_radius=12
-        )
-
-        # ---------- Blue Border ----------
-        border_width = int(3 + pulse * 2)
-
-        gold = theme["selected_outline"]
-
-        pygame.draw.rect(
-            screen,
-            gold,
-            cell_rect,
-            border_width,
-            border_radius=12
-        )
-        elapsed = time.time() - self.logic.flash_start
-
+            
         if elapsed < self.logic.flash_duration:
 
             alpha = 1 - (elapsed / self.logic.flash_duration)
