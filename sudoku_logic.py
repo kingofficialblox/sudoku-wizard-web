@@ -8,6 +8,11 @@ class SudokuLogic:
     def __init__(self, difficulty="MEDIUM"):
         difficulty = difficulty.lower()
         self.difficulty = difficulty.capitalize()
+        self.scoring = {
+            "easy": {"correct": 75, "line": 350, "box": 700, "complete": 1400, "mistake": 225, "hint": 150, "time": 3},
+            "medium": {"correct": 100, "line": 500, "box": 1000, "complete": 2000, "mistake": 150, "hint": 100, "time": 2},
+            "hard": {"correct": 150, "line": 750, "box": 1500, "complete": 3000, "mistake": 75, "hint": 50, "time": 1},
+        }[difficulty]
 
         self.selected = None
         self.highlight_number = None
@@ -32,11 +37,14 @@ class SudokuLogic:
 
         
         self.mistakes = 0
+        self.hints_used = 0
+        self.numbers_entered = 0
 
         self.invalid_cell = None
         self.invalid_number = None
         self.invalid_time = 0
         self.game_won = False
+        self.game_over = False
         self.popup_scale = 0.0
         # Timer
         self.start_time = time.time()
@@ -63,9 +71,14 @@ class SudokuLogic:
         self.score_popup_color = None
         self.score_popup_time = 0
         self.score_popup_y = 0
+
+    def update_stars(self):
+        """Star rating is earned from the score, independent of mistakes."""
+        thresholds = {"Easy": (600, 1300, 2200, 3200), "Medium": (900, 1800, 3000, 4300), "Hard": (1200, 2400, 4000, 5700)}
+        self.stars = sum(self.score >= threshold for threshold in thresholds[self.difficulty]) + 1 if self.score else 0
     
     def get_elapsed_time(self):
-        if self.game_won:
+        if self.game_won or self.game_over:
             return int(self.end_time - self.start_time)
 
         if self.paused:
@@ -158,12 +171,13 @@ class SudokuLogic:
 
         # Save for Undo
         self.history.append((row, col, self.grid[row][col]))
+        self.numbers_entered += 1
 
         # Correct number
         if number == self.solution[row][col]:
             self.grid[row][col] = number
-            self.score += 100
-            self.show_score_popup(100)
+            self.score += self.scoring["correct"]
+            self.show_score_popup(self.scoring["correct"])
             self.score_pop_time = time.time()
             self.score_pop_type = "up"
             self.invalid_cell = None
@@ -175,16 +189,16 @@ class SudokuLogic:
             # ---------- Check completed row ----------
             if all(self.grid[row][c] != 0 for c in range(9)):
                 self.flash_row = row
-                self.score += 500
-                self.show_score_popup(500)
+                self.score += self.scoring["line"]
+                self.show_score_popup(self.scoring["line"])
                 self.score_pop_time = time.time()
                 self.score_pop_type = "up"
 
             # ---------- Check completed column ----------
             if all(self.grid[r][col] != 0 for r in range(9)):
                 self.flash_col = col
-                self.score += 500
-                self.show_score_popup(500)
+                self.score += self.scoring["line"]
+                self.show_score_popup(self.scoring["line"])
                 self.score_pop_time = time.time()
                 self.score_pop_type = "up"
 
@@ -201,24 +215,27 @@ class SudokuLogic:
 
             if complete:
                 self.flash_box = (box_row, box_col)
-                self.score += 1000
-                self.show_score_popup(1000)
+                self.score += self.scoring["box"]
+                self.show_score_popup(self.scoring["box"])
                 self.score_pop_time = time.time()
                 self.score_pop_type = "up"
             # Start flash animation
             if self.flash_row is not None or self.flash_col is not None or self.flash_box is not None:
                 self.flash_start = time.time()
+            self.update_stars()
             if self.is_solved():
                 self.game_won = True
                 self.win_buttons_offset = 60
-                self.score += 2000
-                self.show_score_popup(2000)
+                self.score += self.scoring["complete"]
+                self.show_score_popup(self.scoring["complete"])
                 self.score_pop_type = "up"
                 self.score_pop_time = time.time()
                 self.popup_scale = 0.0
                 self.end_time = time.time()
 
                 elapsed = int(self.end_time - self.start_time)
+                time_penalty = (elapsed // 30) * self.scoring["time"]
+                self.score = max(0, self.score - time_penalty)
 
                 # ---------- Accuracy ----------
                 total_inputs = 81 + self.mistakes
@@ -226,30 +243,25 @@ class SudokuLogic:
                 self.accuracy = round(
                     (81 / total_inputs) * 100
                 )               
-                # ---------- Stars ----------
-                if self.mistakes == 0:
-                    self.stars = 5
-                elif self.mistakes <= 2:
-                    self.stars = 4
-                elif self.mistakes <= 4:
-                    self.stars = 3
-                elif self.mistakes <= 6:
-                    self.stars = 2
-                else:
-                    self.stars = 1
+                self.update_stars()
 
                 return "WIN"
 
             return True
         else:
             self.mistakes += 1
-            self.score = max(0, self.score - 150)
-            self.show_score_popup(-150)
+            self.score = max(0, self.score - self.scoring["mistake"])
+            self.show_score_popup(-self.scoring["mistake"])
             self.score_pop_time = time.time()
             self.score_pop_type = "down"
             self.invalid_cell = (row, col)
             self.invalid_number = number
             self.invalid_time = time.time()
+            self.update_stars()
+            if self.mistakes >= 3:
+                self.game_over = True
+                self.end_time = time.time()
+                return "GAME_OVER"
             return False
 
     def undo(self):
@@ -272,9 +284,11 @@ class SudokuLogic:
         import random
 
         row, col = random.choice(empty_cells)
+        self.hints_used += 1
         self.grid[row][col] = self.solution[row][col]
-        self.score = max(0, self.score - 100)
-        self.show_score_popup(-100)
+        self.score = max(0, self.score - self.scoring["hint"])
+        self.show_score_popup(-self.scoring["hint"])
+        self.update_stars()
         self.score_pop_time = time.time()
         self.score_pop_type = "down"
         self.fixed[row][col] = True
@@ -282,6 +296,7 @@ class SudokuLogic:
     def restart(self):
         self.grid = [row[:] for row in self.original_grid]
         self.game_won = False
+        self.game_over = False
 
         self.fixed = [
             [cell != 0 for cell in row]
@@ -298,6 +313,8 @@ class SudokuLogic:
         self.selected = None
 
         self.mistakes = 0
+        self.hints_used = 0
+        self.numbers_entered = 0
 
         self.invalid_cell = None
         self.invalid_number = None
@@ -305,6 +322,7 @@ class SudokuLogic:
 
         self.start_time = time.time()
         self.score = 0
+        self.stars = 0
         self.score_pop_time = time.time()
         self.score_pop_type = None
         self.paused = False

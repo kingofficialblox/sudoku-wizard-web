@@ -14,7 +14,7 @@ class Board:
         # ---------- Icons ----------
 
         self.trophy = pygame.image.load(
-            "assets/images/trophy.png"
+            "assets/images/won.png"
         ).convert_alpha()
         self.sparkle_angle = 0
 
@@ -154,13 +154,13 @@ class Board:
         # ---------- Header Background ----------
         pygame.draw.rect(
             screen,
-            (115,95,190),      # light blue-grey
+            theme["header"],
             (0, 0, WIDTH, HEADER_HEIGHT)
         )
 
         pygame.draw.line(
             screen,
-            (180, 185, 195),
+            theme["accent"],
             (0, HEADER_HEIGHT),
             (WIDTH, HEADER_HEIGHT),
             2
@@ -175,7 +175,7 @@ class Board:
         )      
         pygame.draw.line(
             screen,
-            (212, 218, 228),
+            theme["popup_border"],
             (0, HEADER_HEIGHT),
             (WIDTH, HEADER_HEIGHT),
             2
@@ -307,7 +307,7 @@ class Board:
 
         # ---------- Right ----------
         mistakes = self.header_font.render(
-            f"MISTAKES : {self.logic.mistakes}",
+            f"MISTAKES : {self.logic.mistakes}/3",
             True,
             theme["text"]
         )
@@ -350,10 +350,20 @@ class Board:
             2,
             border_radius=18
         )
+
+        # Accent strip and icon badge make the score easier to scan at a glance.
+        pygame.draw.rect(
+            screen,
+            theme["accent"],
+            pygame.Rect(score_card.x + 18, score_card.y + 10, score_card.width - 36, 5),
+            border_radius=3
+        )
+        icon_center = (score_card.x + 35, score_card.y + 45)
+        pygame.draw.circle(screen, theme["button"], icon_center, 25)
+        pygame.draw.circle(screen, theme["accent"], icon_center, 25, 2)
         screen.blit(
             self.score_icon,
-            (score_card.x + 15,
-             score_card.y + 13)
+            self.score_icon.get_rect(center=icon_center)
         )
         label = self.info_font.render(
             "SCORE",
@@ -363,8 +373,8 @@ class Board:
 
         screen.blit(
             label,
-            (score_card.x + 58,
-             score_card.y + 15)
+            (score_card.x + 70,
+             score_card.y + 30)
         )
         if abs(self.logic.score - self.display_score) < 1:
             self.display_score = self.logic.score
@@ -415,7 +425,7 @@ class Board:
         score_rect = score.get_rect(
             center=(
                 score_card.centerx,
-                score_card.y + 70
+                score_card.y + 78
             )
         )
 
@@ -920,7 +930,7 @@ class Board:
             screen,
             theme["popup_border"],
             popup,
-            5,
+            3,
             border_radius=30
         )
 
@@ -933,49 +943,6 @@ class Board:
 
         trophy_x = WIDTH//2 - self.trophy.get_width()//2
         trophy_y = popup.y + 1
-        # ---------- Golden Shining Rays Behind Trophy ----------
-
-        cx = WIDTH//2
-        cy = trophy_y + self.trophy.get_height() // 2
-
-        rotation = time.time() * 60
-
-        # Long rays
-        for i in range(20):
-            angle = math.radians(i * 18 + rotation)
-
-            pygame.draw.line(
-                screen,
-                (255, 220, 80),
-                (
-                    cx + math.cos(angle) * 100,
-                    cy + math.sin(angle) * 100
-                ),
-                (
-                    cx + math.cos(angle) * 165,
-                    cy + math.sin(angle) * 165
-                ),
-                4
-            )
-
-        # Short rays between them
-        for i in range(20):
-            angle = math.radians(i * 18 + 9 + rotation)
-
-            pygame.draw.line(
-                screen,
-                (255, 240, 170),
-                (
-                    cx + math.cos(angle) * 110,
-                    cy + math.sin(angle) * 110
-                ),
-                (
-                    cx + math.cos(angle) * 155,
-                    cy + math.sin(angle) * 155
-                ),
-                2
-            )
-
         screen.blit(
             self.trophy,
             (trophy_x, trophy_y)
@@ -1000,16 +967,7 @@ class Board:
 
         # ---------------- STARS ----------------
 
-        if self.logic.mistakes == 0:
-            count = 5
-        elif self.logic.mistakes <= 3:
-            count = 4
-        elif self.logic.mistakes <= 8:
-            count = 3
-        elif self.logic.mistakes <= 15:
-            count = 2
-        else:
-            count = 1
+        count = self.logic.stars
 
 
         star_size = 100

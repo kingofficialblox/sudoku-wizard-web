@@ -1,0 +1,41 @@
+{
+    "level": 11,
+    "xp": 5979,
+    "win_streak": 1,
+    "best_streak": 4,
+    "modes": {
+        "easy": {
+            "wins": 10,
+            "matches": 19,
+            "hints": 339,
+            "numbers": 40,
+            "mistakes": 28,
+            "score_total": 28747,
+            "best_time": 9,
+            "least_mistakes": 0,
+            "most_hints": 34
+        },
+        "medium": {
+            "wins": 1,
+            "matches": 1,
+            "hints": 44,
+            "numbers": 1,
+            "mistakes": 0,
+            "score_total": 4100,
+            "best_time": 21,
+            "least_mistakes": 0,
+            "most_hints": 44
+        },
+        "hard": {
+            "wins": 1,
+            "matches": 3,
+            "hints": 54,
+            "numbers": 7,
+            "mistakes": 6,
+            "score_total": 6150,
+            "best_time": 14,
+            "least_mistakes": 0,
+            "most_hints": 54
+        }
+    }
+}

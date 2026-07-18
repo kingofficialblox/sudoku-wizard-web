@@ -73,6 +73,34 @@ class Button:
         draw_rect = self.rect.copy()
         draw_rect.y += offset
 
+        # Image-only buttons use the PNG artwork as the complete control.
+        # They keep the same hover glow and pressed motion without a second box.
+        if self.icon and not self.text:
+            scale = 1 + self.hover_amount * 0.08
+            if mouse_pressed and hover:
+                scale = 0.94
+            image_size = (
+                max(1, round(self.icon.get_width() * scale)),
+                max(1, round(self.icon.get_height() * scale)),
+            )
+            icon = pygame.transform.smoothscale(self.icon, image_size)
+            icon_rect = icon.get_rect(center=draw_rect.center)
+
+            if self.hover_amount:
+                glow = pygame.Surface(
+                    (icon_rect.width + 20, icon_rect.height + 20),
+                    pygame.SRCALPHA,
+                )
+                pygame.draw.ellipse(
+                    glow,
+                    (*self.border_color, int(55 * self.hover_amount)),
+                    glow.get_rect(),
+                )
+                screen.blit(glow, (icon_rect.x - 10, icon_rect.y - 10))
+
+            screen.blit(icon, icon_rect)
+            return
+
         # Shadow
         shadow_rect = draw_rect.copy()
 
