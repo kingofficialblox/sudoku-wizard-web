@@ -11,11 +11,42 @@ class Board:
     def __init__(self, logic):
 
         self.logic = logic
+        # Difficulty artwork is loaded and scaled only once.  Drawing the
+        # cached surface each frame keeps it suitable for both desktop and
+        # phone screens without adding per-frame image work.
+        self.difficulty_backgrounds = {}
+        self.difficulty_headers = {}
+        for difficulty in ("easy", "medium", "hard"):
+            artwork = pygame.image.load(
+                f"assets/images/{difficulty}.png"
+            ).convert()
+            self.difficulty_backgrounds[difficulty] = pygame.transform.smoothscale(
+                artwork,
+                (WIDTH, HEIGHT)
+            )
+            header = pygame.image.load(
+                f"assets/images/{difficulty}_header.png"
+            ).convert_alpha()
+            header_width = WIDTH - 40 if PORTRAIT_MODE else 700
+            header_height = int(header.get_height() * header_width / header.get_width())
+            self.difficulty_headers[difficulty] = pygame.transform.smoothscale(
+                header, (header_width, header_height)
+            )
+
         # ---------- Icons ----------
 
         self.trophy = pygame.image.load(
             "assets/images/won.png"
         ).convert_alpha()
+        self.win_result_background = pygame.transform.smoothscale(
+            pygame.image.load("assets/images/gamewon.png").convert(),
+            (WIDTH, HEIGHT)
+        )
+        win_panel_size = (650, 1000) if PORTRAIT_MODE else (900, 900)
+        self.win_panel_fade = pygame.transform.smoothscale(
+            self.win_result_background, win_panel_size
+        )
+        self.win_panel_fade.set_alpha(32)
         self.sparkle_angle = 0
 
         self.timer_icon = pygame.image.load(
@@ -44,9 +75,6 @@ class Board:
         self.exit_icon = pygame.image.load(
             "assets/images/exit.png"
         ).convert_alpha()
-        self.new_icon = pygame.image.load(
-            "assets/images/new_game.png"
-        ).convert_alpha()
         self.score_icon = pygame.image.load(
             "assets/images/score.png"
         ).convert_alpha()
@@ -72,8 +100,6 @@ class Board:
 
         self.exit_icon = pygame.transform.smoothscale(self.exit_icon, (30, 30))
         
-        self.new_icon = pygame.transform.smoothscale(self.new_icon,(30, 30))
-
         self.score_icon = pygame.transform.smoothscale(
             self.score_icon,
             (34, 34)
@@ -141,8 +167,13 @@ class Board:
 
             self.logic.select(row, col)
     def draw_background(self, screen, theme):
-
-        screen.fill(theme["background"])
+        # Each difficulty has its own full-colour visual backdrop.
+        difficulty = str(getattr(self.logic, "difficulty", "easy")).lower()
+        artwork = self.difficulty_backgrounds.get(difficulty)
+        if artwork:
+            screen.blit(artwork, (0, 0))
+        else:
+            screen.fill(theme["background"])
         background = theme["background"]
         board = theme["board"]
         grid = theme["grid"]
@@ -151,36 +182,6 @@ class Board:
         secondary = theme["secondary"]
         popup = theme["popup"]
         popup_border = theme["popup_border"]
-        # ---------- Header Background ----------
-        pygame.draw.rect(
-            screen,
-            theme["header"],
-            (0, 0, WIDTH, HEADER_HEIGHT)
-        )
-
-        pygame.draw.line(
-            screen,
-            theme["accent"],
-            (0, HEADER_HEIGHT),
-            (WIDTH, HEADER_HEIGHT),
-            2
-        )
-
-        
-        header_rect = pygame.Rect(
-            15,
-            15,
-            WIDTH - 30,
-            HEADER_HEIGHT - 15
-        )      
-        pygame.draw.line(
-            screen,
-            theme["popup_border"],
-            (0, HEADER_HEIGHT),
-            (WIDTH, HEADER_HEIGHT),
-            2
-        )
-        
         # ---------- Shadow ----------
         shadow_rect = pygame.Rect(
             BOARD_X - 7,
@@ -219,254 +220,105 @@ class Board:
             border_radius=28
         )
 
-    def draw_ui(self, screen, theme):
-
-        # Header
-        # ---------- Header Stat Cards ----------
-
-        card_w = 360
-        card_h = 72
-        card_y = 80
-
-        left_card = pygame.Rect(30, card_y, card_w, card_h)
-
-        center_card = pygame.Rect(
-            WIDTH // 2 - card_w // 2,
-            card_y,
-            card_w,
-            card_h
-        )
-
-        right_card = pygame.Rect(
-            WIDTH - card_w - 30,
-            card_y,
-            card_w,
-            card_h
-        )
-
-        for card in (left_card, center_card, right_card):
-
-            shadow = card.copy()
-            shadow.y += 3
-
-            pygame.draw.rect(
-                screen,
-                theme["shadow"],
-                shadow,
-                border_radius=18
-            )
-
-            pygame.draw.rect(
-                screen,
-                theme["board"],
-                card,
-                border_radius=18
-            )
-
-            pygame.draw.rect(
-                screen,
-                theme["grid"],
-                card,
-                2,
-                border_radius=18
-            )
-
-        elapsed = self.logic.get_elapsed_time()
-        
-        minutes = elapsed // 60
-        seconds = elapsed % 60
-
-        # ---------- Left ----------
-        difficulty = self.header_font.render(
-            f"DIFFICULTY : {self.logic.difficulty}",
-            True,
-            theme["text"]
-        )
-
-        screen.blit(
-            difficulty,
-            (
-            left_card.centerx - difficulty.get_width()//2,
-            left_card.centery - difficulty.get_height()//2
-            )
-        )
-
-        # ---------- Centre ----------
-        timer = self.header_font.render(
-            f"TIME : {minutes:02}:{seconds:02}",
-            True,
-            theme["text"]
-        )
-
-        
-
-        screen.blit(
-            timer,
-            timer.get_rect(center=center_card.center)
-            )
-
-        # ---------- Right ----------
-        mistakes = self.header_font.render(
-            f"MISTAKES : {self.logic.mistakes}/3",
-            True,
-            theme["text"]
-        )
-
-        
-
-        screen.blit(
-            mistakes,
-            mistakes.get_rect(center=right_card.center)
-        )
-        
-        score_card = pygame.Rect(
-            BOARD_X + CELL_SIZE * 9 + 30,
-            BOARD_Y + 20,
-            220,
-            110
-        )
-
-        shadow = score_card.copy()
+    def _draw_stat_card(self, screen, theme, rect, icon, label, value, value_color=None):
+        """Draw a compact, consistent information card without text overflow."""
+        shadow = rect.copy()
         shadow.y += 4
-
+        pygame.draw.rect(screen, theme["shadow"], shadow, border_radius=18)
+        pygame.draw.rect(screen, theme["board"], rect, border_radius=18)
+        pygame.draw.rect(screen, theme["grid"], rect, 2, border_radius=18)
         pygame.draw.rect(
-            screen,
-            theme["shadow"],
-            shadow,
-            border_radius=18
-        )
-
-        pygame.draw.rect(
-            screen,
-            theme["board"],
-            score_card,
-            border_radius=18
-        )
-
-        pygame.draw.rect(
-            screen,
-            theme["grid"],
-            score_card,
-            2,
-            border_radius=18
-        )
-
-        # Accent strip and icon badge make the score easier to scan at a glance.
-        pygame.draw.rect(
-            screen,
-            theme["accent"],
-            pygame.Rect(score_card.x + 18, score_card.y + 10, score_card.width - 36, 5),
+            screen, theme["accent"],
+            pygame.Rect(rect.x + 18, rect.y + 10, rect.width - 36, 5),
             border_radius=3
         )
-        icon_center = (score_card.x + 35, score_card.y + 45)
-        pygame.draw.circle(screen, theme["button"], icon_center, 25)
-        pygame.draw.circle(screen, theme["accent"], icon_center, 25, 2)
-        screen.blit(
-            self.score_icon,
-            self.score_icon.get_rect(center=icon_center)
-        )
-        label = self.info_font.render(
-            "SCORE",
-            True,
-            theme["secondary"]
-        )
 
-        screen.blit(
-            label,
-            (score_card.x + 70,
-             score_card.y + 30)
+        if icon is not None:
+            icon_center = (rect.x + 35, rect.y + 43)
+            pygame.draw.circle(screen, theme["button"], icon_center, 25)
+            pygame.draw.circle(screen, theme["accent"], icon_center, 25, 2)
+            screen.blit(icon, icon.get_rect(center=icon_center))
+            text_x = rect.x + 70
+        else:
+            text_x = rect.x + 18
+
+        compact = rect.height < 100
+        label_surface = self.info_font.render(label, True, theme["secondary"])
+        screen.blit(label_surface, (text_x, rect.y + (17 if compact else 26)))
+        value_surface = self.score_font.render(
+            str(value), True, value_color or theme["text"]
         )
+        value_rect = value_surface.get_rect(
+            center=(rect.centerx, rect.y + (61 if compact else 79))
+        )
+        screen.blit(value_surface, value_rect)
+
+    def draw_ui(self, screen, theme):
+        elapsed = self.logic.get_elapsed_time()
+        minutes, seconds = elapsed // 60, elapsed % 60
+
+        card_w, card_h = 220, 110
+        difficulty = str(getattr(self.logic, "difficulty", "easy")).lower()
+        header_art = self.difficulty_headers.get(difficulty)
+        if PORTRAIT_MODE:
+            header_rect = header_art.get_rect(center=(WIDTH // 2, 28 + header_art.get_height() // 2))
+            score_card = pygame.Rect(WIDTH // 2 - 110, header_rect.bottom + 15, card_w, card_h)
+            time_card = pygame.Rect(WIDTH // 2 - 110, score_card.bottom + 10, card_w, card_h)
+            mistakes_card = pygame.Rect(WIDTH // 2 - 110, time_card.bottom + 10, card_w, card_h)
+        else:
+            header_rect = header_art.get_rect(center=(WIDTH // 2, 75 + header_art.get_height() // 2))
+            card_h = 100
+            score_card = pygame.Rect(BOARD_X + CELL_SIZE * 9 + 30, BOARD_Y + 20, card_w, card_h)
+            time_card = pygame.Rect(score_card.x, score_card.bottom + 12, card_w, card_h)
+            mistakes_card = pygame.Rect(score_card.x, time_card.bottom + 12, card_w, card_h)
+
+        # Each mode supplies its own header artwork, replacing the text card.
+        if header_art:
+            screen.blit(header_art, header_rect)
+
         if abs(self.logic.score - self.display_score) < 1:
             self.display_score = self.logic.score
         else:
-            self.display_score += (
-                self.logic.score - self.display_score
-            ) * 0.15
+            self.display_score += (self.logic.score - self.display_score) * 0.15
         if self.logic.score == 0:
             self.display_score = 0
 
-        # ---------- Score Pop Animation ----------
-        elapsed = time.time() - self.logic.score_pop_time
-
-        score_color = (130, 60, 210)      # Default purple
-        scale = 1.0
-
-        if elapsed < 0.20:
-
-            progress = elapsed / 0.20
-
-            # Same easing as Sudoku number pop
-            scale = 1 + (1.6 - 1) * ((1 - progress) ** 2)
-
+        score_color = (130, 60, 210)
+        score_elapsed = time.time() - self.logic.score_pop_time
+        if score_elapsed < 0.20:
             if self.logic.score_pop_type == "up":
                 score_color = (35, 185, 70)
-
             elif self.logic.score_pop_type == "down":
                 score_color = (220, 45, 45)
 
-        score = self.score_font.render(
-            f"{int(self.display_score):,}",
-            True,
-            score_color
+        self._draw_stat_card(
+            screen, theme, score_card, self.score_icon, "SCORE",
+            f"{int(self.display_score):,}", score_color
+        )
+        self._draw_stat_card(
+            screen, theme, time_card, self.timer_icon, "TIME",
+            f"{minutes:02}:{seconds:02}", theme["text"]
+        )
+        self._draw_stat_card(
+            screen, theme, mistakes_card, self.mistake_icon, "MISTAKES",
+            f"{self.logic.mistakes} / 3", (220, 45, 45) if self.logic.mistakes else theme["text"]
         )
 
-        if scale != 1.0:
-
-            new_size = (
-                int(score.get_width() * scale),
-                int(score.get_height() * scale)
-            )
-
-            score = pygame.transform.smoothscale(
-                score,
-                new_size
-            )
-
-        score_rect = score.get_rect(
-            center=(
-                score_card.centerx,
-                score_card.y + 78
-            )
-        )
-
-        screen.blit(score, score_rect)
-        # ---------- Floating Score Popup ----------
-
+        # Restore the short, fading score-change indicator above the score
+        # card.  It stays separate from the card text, so values never clash.
         if self.logic.score_popup_text:
-
-            elapsed = time.time() - self.logic.score_popup_time
-
-            if elapsed < 1:
-
+            popup_elapsed = time.time() - self.logic.score_popup_time
+            if popup_elapsed < 1:
                 self.logic.score_popup_y -= 1
-
-                popup_font = pygame.font.Font(
-                    "assets/fonts/Poppins-Bold.ttf",
-                    32
-                )
-
+                popup_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 32)
                 popup = popup_font.render(
-                    self.logic.score_popup_text,
-                    True,
-                    self.logic.score_popup_color
+                    self.logic.score_popup_text, True, self.logic.score_popup_color
                 )
-
-                popup.set_alpha(
-                    int(255 * (1 - elapsed))
-                )
-
+                popup.set_alpha(int(255 * (1 - popup_elapsed)))
                 popup_rect = popup.get_rect(
-                    center=(
-                        score_card.centerx,
-                        score_card.y - 20 + self.logic.score_popup_y
-                    )
+                    center=(score_card.centerx, score_card.y - 18 + self.logic.score_popup_y)
                 )
-
-                screen.blit(
-                    popup,
-                    popup_rect
-                )
-
+                screen.blit(popup, popup_rect)
             else:
                 self.logic.score_popup_text = None
 
@@ -903,13 +755,14 @@ class Board:
 
         scale = min(self.logic.popup_scale, 1)
 
+        screen.blit(self.win_result_background, (0, 0))
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((*theme["overlay"],170))
+        overlay.fill((*theme["overlay"], 100))
         screen.blit(overlay, (0,0))
 
 
-        popup_width = int(900 * scale)
-        popup_height = int(900 * scale)
+        popup_width = int((650 if PORTRAIT_MODE else 900) * scale)
+        popup_height = int((1000 if PORTRAIT_MODE else 900) * scale)
 
         popup = pygame.Rect(
             WIDTH//2 - popup_width//2,
@@ -919,12 +772,14 @@ class Board:
         )
 
 
+        popup_fill = pygame.Surface(popup.size, pygame.SRCALPHA)
         pygame.draw.rect(
-            screen,
-            theme["popup"],
-            popup,
+            popup_fill,
+            (*theme["popup"], 191),  # 75% opacity
+            popup_fill.get_rect(),
             border_radius=30
         )
+        screen.blit(popup_fill, popup.topleft)
 
         pygame.draw.rect(
             screen,
@@ -935,8 +790,16 @@ class Board:
         )
 
 
+
         if scale < 0.95:
             return
+
+        # A restrained copy of the victory scene inside the card adds depth
+        # while the opaque text and stats remain easy to read.
+        screen.blit(
+            self.win_panel_fade,
+            self.win_panel_fade.get_rect(center=popup.center)
+        )
 
 
         # ---------------- TROPHY ----------------

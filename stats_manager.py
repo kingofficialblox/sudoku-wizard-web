@@ -43,8 +43,11 @@ class StatsManager:
         return data
 
     def save(self):
-        with open(self.FILE_NAME, "w") as file:
-            json.dump(self.data, file, indent=4)
+        try:
+            with open(self.FILE_NAME, "w") as file:
+                json.dump(self.data, file, indent=4)
+        except OSError as error:
+            print("Statistics could not be saved:", error)
 
     def xp_required(self):
         return 2500 + (self.data["level"] - 1) * 600

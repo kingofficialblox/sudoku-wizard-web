@@ -18,14 +18,29 @@ class Game:
 
     def __init__(self):
 
+        # Pydroid's runner prepares SDL through pygame.init(); unlike a direct
+        # pygame.display.init() call, this correctly marks SDL as main-ready.
         pygame.init()
-        pygame.mixer.init()
 
         self.screen = pygame.display.set_mode(
             (WIDTH, HEIGHT)
         )
 
-        pygame.display.set_caption("Sudoku")
+        pygame.display.set_caption("Sudoku Wizard")
+
+        # Android requires a display before attempting to start audio.
+        self.audio_available = True
+        if not pygame.mixer.get_init():
+            try:
+                pygame.mixer.init(
+                    frequency=44100,
+                    size=-16,
+                    channels=2,
+                    buffer=512,
+                )
+            except pygame.error as error:
+                print("Audio disabled:", error)
+                self.audio_available = False
 
         self.clock = pygame.time.Clock()
 
@@ -45,15 +60,20 @@ class Game:
         self.match_recorded = False
         # ---------- Popup Icons ----------
 
-        self.new_icon = pygame.image.load(
-            "assets/images/new_game.png"
-        ).convert_alpha()
         self.game_logo = pygame.image.load(
             "assets/images/game_logo.png"
         ).convert_alpha()
         self.lost_image = pygame.image.load(
             "assets/images/lost.png"
         ).convert_alpha()
+        self.game_over_background = pygame.transform.smoothscale(
+            pygame.image.load("assets/images/gameover.png").convert(),
+            (WIDTH, HEIGHT)
+        )
+        self.game_over_panel_fade = pygame.transform.smoothscale(
+            self.game_over_background, (650, 640)
+        )
+        self.game_over_panel_fade.set_alpha(32)
 
         self.exit_icon = pygame.image.load(
             "assets/images/exit.png"
@@ -127,11 +147,6 @@ class Game:
             (70, 70)
         )
 
-        self.new_icon = pygame.transform.smoothscale(
-            self.new_icon,
-            (30, 30)
-        )
-
         self.exit_icon = pygame.transform.smoothscale(
             self.exit_icon,
             (30, 30)
@@ -142,20 +157,21 @@ class Game:
             (30, 30)
         )
 
+        side_icon_size = 70 if PORTRAIT_MODE else 56
         self.undo_icon = pygame.transform.smoothscale(
             self.undo_icon,
-            (70, 70)
+            (side_icon_size, side_icon_size)
         )
         self.game_logo = pygame.transform.smoothscale(self.game_logo, (260, 260))
         self.lost_image = pygame.transform.smoothscale(self.lost_image, (190, 190))
 
         self.hint_icon = pygame.transform.smoothscale(
             self.hint_icon,
-            (70, 70)
+            (side_icon_size, side_icon_size)
         )               
         self.menu_icon = pygame.transform.smoothscale(
             self.menu_icon,
-            (70, 70)
+            (side_icon_size, side_icon_size)
         )
         self.pause_icon = pygame.transform.smoothscale(
             self.pause_icon,
@@ -182,13 +198,15 @@ class Game:
         
         
         
-        icon_button_size = 70
+        icon_button_size = 70 if PORTRAIT_MODE else 60
         icon_button_x = start_x
-        icon_button_y = BOARD_Y + 150
+        # On desktop the side actions follow the score, time and mistakes
+        # cards; portrait keeps them beside the board for touch-friendly room.
+        icon_button_y = BOARD_Y + 150 if PORTRAIT_MODE else BOARD_Y + 360
 
         self.undo_button = Button(
             icon_button_x,
-            icon_button_y,
+            icon_button_y + (85 if PORTRAIT_MODE else 70),
             icon_button_size,
             icon_button_size,
             "",
@@ -199,7 +217,7 @@ class Game:
 
         self.hint_button = Button(
             icon_button_x,
-            icon_button_y + 85,
+            icon_button_y,
             icon_button_size,
             icon_button_size,
             "",
@@ -209,7 +227,7 @@ class Game:
         )
         self.board_menu_button = Button(
             icon_button_x,
-            icon_button_y + 170,
+            icon_button_y + (170 if PORTRAIT_MODE else 140),
             icon_button_size,
             icon_button_size,
             "",
@@ -221,7 +239,7 @@ class Game:
 
         self.number_buttons = []
 
-        key_width = 75
+        key_width = 55 if PORTRAIT_MODE else 75
         key_height = 55
         gap = 12
 
@@ -229,10 +247,16 @@ class Game:
         start_y = BOARD_Y + 10
 
         for i in range(9):
+            if PORTRAIT_MODE:
+                key_x = WIDTH // 2 - (key_width * 3 + gap * 2) // 2 + (i % 3) * (key_width + gap)
+                key_y = BOARD_Y + CELL_SIZE * 9 + 35 + (i // 3) * (key_height + gap)
+            else:
+                key_x = start_x
+                key_y = start_y + i * (key_height + gap)
             self.number_buttons.append(
                 Button(
-                    start_x,
-                    start_y + i * (key_height + gap),
+                    key_x,
+                    key_y,
                     key_width,
                     key_height,
                     str(i + 1)
@@ -397,41 +421,38 @@ class Game:
         
         # ---------- Background Music ----------
         self.current_music_track = "background"
-        pygame.mixer.music.load(
-            "assets/sounds/background.mp3"
-        )
-        
         self.music_normal_volume = self.music_volume
         self.music_win_volume = 0.10
 
-        pygame.mixer.music.set_volume(self.music_volume)
+        if self.audio_available:
+            try:
+                pygame.mixer.music.load("assets/sounds/background.mp3")
+                pygame.mixer.music.set_volume(self.music_volume)
+                pygame.mixer.music.play(-1, fade_ms=2000)
+                self.click_sound = pygame.mixer.Sound("assets/sounds/click.wav")
+                self.correct_sound = pygame.mixer.Sound("assets/sounds/correct.wav")
+                self.wrong_sound = pygame.mixer.Sound("assets/sounds/wrong.wav")
+                self.hint_sound = pygame.mixer.Sound("assets/sounds/hint.wav")
+                self.win_sound = pygame.mixer.Sound("assets/sounds/win.wav")
+                self.lose_sound = pygame.mixer.Sound("assets/sounds/loose.wav")
+                for sound in (self.click_sound, self.correct_sound, self.wrong_sound,
+                              self.hint_sound, self.win_sound, self.lose_sound):
+                    sound.set_volume(self.sfx_volume)
+            except pygame.error as error:
+                print("Audio disabled:", error)
+                self.audio_available = False
 
-        pygame.mixer.music.play(-1, fade_ms=2000)
-        # ---------- Sounds ----------
-
-        self.click_sound = pygame.mixer.Sound("assets/sounds/click.wav")
-        self.correct_sound = pygame.mixer.Sound("assets/sounds/correct.wav")
-        self.wrong_sound = pygame.mixer.Sound("assets/sounds/wrong.wav")
-        self.hint_sound = pygame.mixer.Sound("assets/sounds/hint.wav")
-        self.win_sound = pygame.mixer.Sound("assets/sounds/win.wav")
-
-        # Volume
-        pygame.mixer.music.set_volume(self.music_volume)
-        self.click_sound.set_volume(self.sfx_volume)
-        self.correct_sound.set_volume(self.sfx_volume)
-        self.wrong_sound.set_volume(self.sfx_volume)
-        self.hint_sound.set_volume(self.sfx_volume)
-        self.win_sound.set_volume(self.sfx_volume)
-        pygame.mixer.music.set_volume(self.music_volume)
-
-        self.click_sound.set_volume(self.sfx_volume)
-        self.correct_sound.set_volume(self.sfx_volume)
-        self.wrong_sound.set_volume(self.sfx_volume)
-        self.hint_sound.set_volume(self.sfx_volume)
-        self.win_sound.set_volume(self.sfx_volume)
+        if not self.audio_available:
+            self.click_sound = None
+            self.correct_sound = None
+            self.wrong_sound = None
+            self.hint_sound = None
+            self.win_sound = None
+            self.lose_sound = None
         # ---------- Confetti ----------
         self.confetti = []
         self.previous_win_state = False
+        self.previous_game_over_state = False
     def save_settings(self):
         data = {
             "music": self.music_volume,
@@ -439,8 +460,11 @@ class Game:
             "theme": "dark" if self.theme == DARK else "light"
         }
 
-        with open("settings.json", "w") as f:
-            json.dump(data, f, indent=4)
+        try:
+            with open("settings.json", "w") as f:
+                json.dump(data, f, indent=4)
+        except OSError as error:
+            print("Settings could not be saved:", error)
 
 
     def load_settings(self):
@@ -474,6 +498,26 @@ class Game:
             self.logic.hover = None
 
         for event in pygame.event.get():
+            # Android/iOS report normalized finger coordinates; convert them
+            # into the same logical positions used by desktop mouse handlers.
+            finger_events = tuple(
+                value for value in (
+                    getattr(pygame, "FINGERDOWN", None),
+                    getattr(pygame, "FINGERUP", None),
+                    getattr(pygame, "FINGERMOTION", None),
+                ) if value is not None
+            )
+            if event.type in finger_events:
+                event_type = {
+                    getattr(pygame, "FINGERDOWN", None): pygame.MOUSEBUTTONDOWN,
+                    getattr(pygame, "FINGERUP", None): pygame.MOUSEBUTTONUP,
+                    getattr(pygame, "FINGERMOTION", None): pygame.MOUSEMOTION,
+                }[event.type]
+                event = pygame.event.Event(
+                    event_type,
+                    {"pos": (int(event.x * WIDTH), int(event.y * HEIGHT)), "button": 1}
+                )
+
             if event.type == pygame.QUIT:
                 self.running = False
                 continue
@@ -516,7 +560,7 @@ class Game:
                         self.settings_open = True
 
                     elif self.menu_exit_button.clicked(pos):
-                        pygame.mixer.music.fadeout(500)
+                        self.fade_out_music(500)
                         self.running = False
 
                     continue
@@ -600,7 +644,7 @@ class Game:
 
                     elif self.popup_exit_button.clicked(pos):
                         self.play_sound(self.click_sound)
-                        pygame.mixer.music.fadeout(800)
+                        self.fade_out_music(800)
                         self.running = False
 
                     elif self.popup_menu_button.clicked(pos):
@@ -746,7 +790,8 @@ class Game:
                             )
                         )
 
-                        pygame.mixer.music.set_volume(self.music_volume)
+                        if self.audio_available:
+                            pygame.mixer.music.set_volume(self.music_volume)
                         self.save_settings()
 
                 if self.drag_sfx:
@@ -764,11 +809,7 @@ class Game:
                         )
                     )
 
-                    self.click_sound.set_volume(self.sfx_volume)
-                    self.correct_sound.set_volume(self.sfx_volume)
-                    self.wrong_sound.set_volume(self.sfx_volume)
-                    self.hint_sound.set_volume(self.sfx_volume)
-                    self.win_sound.set_volume(self.sfx_volume)
+                    self.set_sfx_volume(self.sfx_volume)
                     self.save_settings()
                     now = pygame.time.get_ticks()
 
@@ -941,7 +982,7 @@ class Game:
         self.pause_hover = self.pause_button.collidepoint(mouse_pos)
         self.settings_hover = self.settings_button.collidepoint(mouse_pos)
         self.pause_hover = self.pause_button.collidepoint(mouse_pos)
-        # ---------- Spawn confetti once ----------
+        # ---------- End-of-game effects (each plays/spawns once) ----------
         if self.logic.game_won and not self.previous_win_state:
 
             self.confetti = []
@@ -953,6 +994,12 @@ class Game:
 
         elif not self.logic.game_won:
             self.previous_win_state = False
+
+        if self.logic.game_over and not self.previous_game_over_state:
+            self.play_sound(self.lose_sound)
+            self.previous_game_over_state = True
+        elif not self.logic.game_over:
+            self.previous_game_over_state = False
 
         # Draw the Sudoku board
         self.board.draw(
@@ -1743,68 +1790,111 @@ class Game:
             self.popup_new_button.text = "PLAY AGAIN" if self.logic.game_over else "NEW GAME"
 
             if self.logic.game_over:
+                if self.logic.popup_scale < 1:
+                    self.logic.popup_scale += (1 - self.logic.popup_scale) * 0.14
+                popup_scale = min(self.logic.popup_scale, 1)
+                self.screen.blit(self.game_over_background, (0, 0))
                 overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-                overlay.fill((0, 0, 0, 150))
+                overlay.fill((0, 0, 0, 90))
                 self.screen.blit(overlay, (0, 0))
-                panel = pygame.Rect(WIDTH // 2 - 325, HEIGHT // 2 - 320, 650, 640)
-                pygame.draw.rect(self.screen, self.theme["shadow"], panel.move(0, 9), border_radius=30)
-                pygame.draw.rect(self.screen, self.theme["popup"], panel, border_radius=26)
-                pygame.draw.rect(self.screen, (220, 70, 70), panel, 3, border_radius=26)
-                title_font = pygame.font.Font("assets/fonts/Poppins-ExtraBold.ttf", 58)
-                title = title_font.render("GAME OVER", True, (235, 75, 80))
-                subtitle = self.board.info_font.render("You reached the 3-mistake limit", True, self.theme["secondary"])
-                self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 105)))
-                self.screen.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.y + 158)))
-                self.screen.blit(
-                    self.lost_image,
-                    self.lost_image.get_rect(center=(panel.centerx, panel.y + 260))
+                panel_width = int(650 * popup_scale)
+                panel_height = int(640 * popup_scale)
+                panel = pygame.Rect(
+                    WIDTH // 2 - panel_width // 2,
+                    HEIGHT // 2 - panel_height // 2,
+                    panel_width,
+                    panel_height
                 )
-                stat_y = panel.y + 365
-                elapsed = self.logic.get_elapsed_time()
-                stats = (("TIME", f"{elapsed // 60:02}:{elapsed % 60:02}"), ("DIFFICULTY", self.logic.difficulty), ("MISTAKES", "3 / 3"))
-                for index, (label, value) in enumerate(stats):
-                    card = pygame.Rect(panel.x + 35 + index * 195, stat_y, 175, 90)
-                    pygame.draw.rect(self.screen, self.theme["button"], card, border_radius=16)
-                    pygame.draw.rect(self.screen, self.theme["popup_border"], card, 2, border_radius=16)
-                    label_surface = self.board.info_font.render(label, True, self.theme["secondary"])
-                    value_surface = self.board.header_font.render(value, True, (235, 75, 80) if label == "MISTAKES" else self.theme["text"])
-                    self.screen.blit(label_surface, label_surface.get_rect(center=(card.centerx, card.y + 28)))
-                    self.screen.blit(value_surface, value_surface.get_rect(center=(card.centerx, card.y + 62)))
+                pygame.draw.rect(self.screen, self.theme["shadow"], panel.move(0, 9), border_radius=30)
+                panel_fill = pygame.Surface(panel.size, pygame.SRCALPHA)
+                pygame.draw.rect(
+                    panel_fill,
+                    (*self.theme["popup"], 242),  # 95% opacity
+                    panel_fill.get_rect(),
+                    border_radius=26
+                )
+                self.screen.blit(panel_fill, panel.topleft)
+                pygame.draw.rect(self.screen, (220, 70, 70), panel, 3, border_radius=26)
+                if popup_scale >= 0.95:
+                    self.screen.blit(
+                        self.game_over_panel_fade,
+                        self.game_over_panel_fade.get_rect(center=panel.center)
+                    )
+                    title_font = pygame.font.Font("assets/fonts/Poppins-ExtraBold.ttf", 58)
+                    title = title_font.render("GAME OVER", True, (235, 75, 80))
+                    subtitle = self.board.info_font.render("You reached the 3-mistake limit", True, self.theme["secondary"])
+                    self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 105)))
+                    self.screen.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.y + 158)))
+                    self.screen.blit(
+                        self.lost_image,
+                        self.lost_image.get_rect(center=(panel.centerx, panel.y + 260))
+                    )
+                    stat_y = panel.y + 365
+                    elapsed = self.logic.get_elapsed_time()
+                    stats = (("TIME", f"{elapsed // 60:02}:{elapsed % 60:02}"), ("DIFFICULTY", self.logic.difficulty), ("MISTAKES", "3 / 3"))
+                    for index, (label, value) in enumerate(stats):
+                        card = pygame.Rect(panel.x + 35 + index * 195, stat_y, 175, 90)
+                        pygame.draw.rect(self.screen, self.theme["button"], card, border_radius=16)
+                        pygame.draw.rect(self.screen, self.theme["popup_border"], card, 2, border_radius=16)
+                        label_surface = self.board.info_font.render(label, True, self.theme["secondary"])
+                        value_surface = self.board.header_font.render(value, True, (235, 75, 80) if label == "MISTAKES" else self.theme["text"])
+                        self.screen.blit(label_surface, label_surface.get_rect(center=(card.centerx, card.y + 28)))
+                        self.screen.blit(value_surface, value_surface.get_rect(center=(card.centerx, card.y + 62)))
 
             button_y = (panel.bottom - 65 if self.logic.game_over else HEIGHT // 2 + 360) + int(self.win_buttons_offset)
             self.popup_new_button.rect.center = (WIDTH // 2 - 180, button_y)
             self.popup_menu_button.rect.center = (WIDTH // 2, button_y)
             self.popup_exit_button.rect.center = (WIDTH // 2 + 180, button_y)
             for button in (self.popup_new_button, self.popup_menu_button, self.popup_exit_button):
+                button.bg_color = self.theme["button"]
+                button.hover_color = self.theme["button_hover"]
                 button.border_color = self.theme["grid"]
                 button.text_color = self.theme["text"]
                 button.draw(self.screen)
         # ---------- Dynamic Music Volume ----------
-        current = pygame.mixer.music.get_volume()
-        if self.logic.game_won:
-            target = self.music_win_volume
-        else:
-            target = self.music_volume
-        if abs(current-target) < 0.01:
-            current = target
-        else:
-            current += (target-current)*0.06
-        pygame.mixer.music.set_volume(current)
-        if (
-            self.drag_music
-            or self.drag_sfx
-            or self.music_slider.collidepoint(pygame.mouse.get_pos())
-            or self.sfx_slider.collidepoint(pygame.mouse.get_pos())
-        ):
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
-        else:
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        if self.audio_available:
+            current = pygame.mixer.music.get_volume()
+            target = self.music_win_volume if self.logic.game_won else self.music_volume
+            if abs(current-target) < 0.01:
+                current = target
+            else:
+                current += (target-current)*0.06
+            pygame.mixer.music.set_volume(current)
+        try:
+            if (
+                self.drag_music
+                or self.drag_sfx
+                or self.music_slider.collidepoint(pygame.mouse.get_pos())
+                or self.sfx_slider.collidepoint(pygame.mouse.get_pos())
+            ):
+                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+            else:
+                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        except pygame.error:
+            pass
 
         pygame.display.flip()
     def play_sound(self, sound):
 
-        if self.sfx_on and self.sfx_volume > 0:
+        if self.audio_available and self.sfx_on and self.sfx_volume > 0 and sound is not None:
             sound.play()
+
+    def set_music_volume(self, volume):
+        self.music_volume = volume
+        if self.audio_available:
+            pygame.mixer.music.set_volume(volume)
+
+    def set_sfx_volume(self, volume):
+        self.sfx_volume = volume
+        if self.audio_available:
+            for sound in (self.click_sound, self.correct_sound, self.wrong_sound,
+                          self.hint_sound, self.win_sound, self.lose_sound):
+                if sound is not None:
+                    sound.set_volume(volume)
+
+    def fade_out_music(self, duration):
+        if self.audio_available:
+            pygame.mixer.music.fadeout(duration)
 
     def record_match(self, won):
         if self.match_recorded:
@@ -1829,7 +1919,7 @@ class Game:
             "hard": "assets/sounds/hard.mp3",
         }
 
-        if track == self.current_music_track:
+        if not self.audio_available or track == self.current_music_track:
             return
 
         pygame.mixer.music.fadeout(250)
@@ -1859,9 +1949,8 @@ class Game:
 
         self.board.display_score = 0
         self.win_buttons_offset = 120
-        pygame.mixer.music.set_volume(
-            self.music_volume
-        )
+        if self.audio_available:
+            pygame.mixer.music.set_volume(self.music_volume)
 
     def run(self):
 

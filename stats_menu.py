@@ -71,7 +71,8 @@ class StatsMenu:
     def draw(self):
         theme = self.game.theme
         self.screen.fill(theme["background"])
-        panel = pygame.Rect(WIDTH // 2 - 410, 60, 820, HEIGHT - 160)
+        panel_width = 620 if WIDTH < 900 else 820
+        panel = pygame.Rect(WIDTH // 2 - panel_width // 2, 60, panel_width, HEIGHT - 160)
         pygame.draw.rect(self.screen, theme["shadow"], panel.move(0, 8), border_radius=28)
         pygame.draw.rect(self.screen, theme["popup"], panel, border_radius=28)
         pygame.draw.rect(self.screen, theme["popup_border"], panel, 2, border_radius=28)
@@ -99,7 +100,10 @@ class StatsMenu:
         values = self._values()
         for index, (label, value) in enumerate(values):
             col, row = index % 2, index // 2
-            card = pygame.Rect(panel.x + 55 + col * 360, 335 + row * 82, 330, 64)
+            card_width = 250 if WIDTH < 900 else 330
+            card_gap = 10 if WIDTH < 900 else 30
+            card_x = panel.x + 55 + col * (card_width + card_gap)
+            card = pygame.Rect(card_x, 335 + row * 82, card_width, 64)
             pygame.draw.rect(self.screen, theme["button"], card, border_radius=14)
             pygame.draw.rect(self.screen, theme["popup_border"], card, 1, border_radius=14)
             label_surface = self.font.render(label, True, theme["secondary"])

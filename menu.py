@@ -187,9 +187,6 @@ class Menu:
             pygame.draw.line(grid_overlay, grid_color, (0, y), (WIDTH, y), width)
         self.screen.blit(grid_overlay, (0, 0))
 
-        logo = pygame.transform.smoothscale(self.game.game_logo, (135, 135))
-        self.screen.blit(logo, logo.get_rect(center=(WIDTH // 2, 140)))
-
         title1 = self.title_font.render(
             "SUDOKU",
             True,
@@ -204,12 +201,12 @@ class Menu:
 
         self.screen.blit(
             title1,
-            title1.get_rect(center=(WIDTH//2,260))
+            title1.get_rect(center=(WIDTH//2,190))
         )
 
         self.screen.blit(
             title2,
-            title2.get_rect(center=(WIDTH//2,365))
+            title2.get_rect(center=(WIDTH//2,295))
         )
 
         

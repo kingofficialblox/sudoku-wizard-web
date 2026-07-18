@@ -1,20 +1,28 @@
-"""
-Game constants and configuration.
-"""
+"""Game constants and responsive layout configuration."""
+
+import os
+import sys
 
 # ==================== WINDOW ====================
-WIDTH = 1450
-HEIGHT = 1040
+PORTRAIT_MODE = (
+    os.environ.get("SUDOKU_PORTRAIT") == "1"
+    or sys.platform == "android"
+    or "ANDROID_ARGUMENT" in os.environ
+    or hasattr(sys, "getandroidapilevel")
+)
+
+WIDTH = 720 if PORTRAIT_MODE else 1450
+HEIGHT = 1280 if PORTRAIT_MODE else 1040
 FPS = 60
 
 # ==================== BOARD ====================
 ROWS = 9
 COLS = 9
-CELL_SIZE = 68
+CELL_SIZE = 54 if PORTRAIT_MODE else 68
 
 BOARD_X = (WIDTH - CELL_SIZE * 9) // 2
-BOARD_Y = 183
-HEADER_HEIGHT = 170
+BOARD_Y = 555 if PORTRAIT_MODE else 265
+HEADER_HEIGHT = 320 if PORTRAIT_MODE else 170
 BUTTON_Y = 45
 
 # ==================== COLORS - UI ====================

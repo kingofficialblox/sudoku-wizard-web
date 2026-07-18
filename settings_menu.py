@@ -35,14 +35,9 @@ class SettingsMenu:
         slider = self.music_slider if slider_name == "music" else self.sfx_slider
         volume = max(0.0, min(1.0, (mouse_x - slider.left) / slider.width))
         if slider_name == "music":
-            self.game.music_volume = volume
-            pygame.mixer.music.set_volume(volume)
+            self.game.set_music_volume(volume)
         else:
-            self.game.sfx_volume = volume
-            for sound in (self.game.click_sound, self.game.correct_sound,
-                          self.game.wrong_sound, self.game.hint_sound,
-                          self.game.win_sound):
-                sound.set_volume(volume)
+            self.game.set_sfx_volume(volume)
         self.game.save_settings()
 
     def handle_event(self, event):
