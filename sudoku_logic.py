@@ -42,6 +42,7 @@ class SudokuLogic:
         # Game supplies the player's persistent Hint Token balance.
         self.hint_tokens = 0
         self.auto_notes_tokens = 0
+        self.erase_all_tokens = 0
         self.correct_answers = 0
         self.hint_earned_time = 0
         self.numbers_entered = 0
@@ -424,6 +425,32 @@ class SudokuLogic:
 
         self.save_history(row, col)
         self.notes[row][col].clear()
+
+    def erase_all(self):
+        """Clear every player-editable value and note using one token."""
+        if self.erase_all_tokens <= 0:
+            return "NO_ERASE_ALL"
+
+        has_player_entries = any(
+            (not self.fixed[row][col])
+            and (self.grid[row][col] != 0 or self.notes[row][col])
+            for row in range(9)
+            for col in range(9)
+        )
+        if not has_player_entries:
+            return "NOTHING_TO_ERASE"
+
+        history_row, history_col = self.selected or (0, 0)
+        self.save_history(history_row, history_col, action="erase_all")
+        self.erase_all_tokens -= 1
+        for row in range(9):
+            for col in range(9):
+                if not self.fixed[row][col]:
+                    self.grid[row][col] = 0
+                    self.notes[row][col].clear()
+        self.invalid_cell = None
+        self.invalid_number = None
+        return "ERASE_ALL"
 
     def apply_auto_notes(self):
         """Fill every empty cell with only its currently valid candidates."""

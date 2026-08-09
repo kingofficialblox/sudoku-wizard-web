@@ -21,9 +21,10 @@ from tutorial_menu import TutorialMenu
 from achievements_menu import AchievementsMenu
 from store_menu import StoreMenu
 from daily_calendar_menu import DailyCalendarMenu
+from app_paths import user_file
 class Game:
 
-    SAVE_GAME_FILE = "saved_game.json"
+    SAVE_GAME_FILE = user_file("saved_game.json")
 
     def __init__(self):
 
@@ -134,6 +135,7 @@ class Game:
         self.apply_cosmetic_aura()
         self.logic.hint_tokens = self.stats.get_hint_tokens(self.logic.difficulty)
         self.logic.auto_notes_tokens = self.stats.get_auto_notes_tokens()
+        self.logic.erase_all_tokens = self.stats.get_erase_all_tokens()
         self.stats_menu = StatsMenu(self)
         self.stats_open = False
         self.achievements_menu = AchievementsMenu(self)
@@ -264,7 +266,7 @@ class Game:
             (30, 30)
         )
 
-        side_icon_size = 58 if PORTRAIT_MODE else 48
+        side_icon_size = 58 if PORTRAIT_MODE else 44
         self.undo_icon = pygame.transform.smoothscale(
             self.undo_icon,
             (side_icon_size, side_icon_size)
@@ -314,17 +316,37 @@ class Game:
         
         
         
-        icon_button_size = 58 if PORTRAIT_MODE else 50
+        icon_button_size = 58 if PORTRAIT_MODE else 46
         icon_button_x = start_x
         # On desktop the side actions follow the score, time and mistakes
         # cards; portrait keeps them beside the board for touch-friendly room.
         # Leave room for the Hint Token display between Settings and Hint on phones.
         icon_button_y = BOARD_Y + 184 if PORTRAIT_MODE else BOARD_Y + 344
-        action_gap = 5 if PORTRAIT_MODE else 4
+        action_gap = 5 if PORTRAIT_MODE else 3
+
+        if PORTRAIT_MODE:
+            first_control_x = second_control_x = icon_button_x
+            notes_y = icon_button_y + (icon_button_size + action_gap)
+            auto_notes_y = icon_button_y + (icon_button_size + action_gap) * 2
+            erase_y = icon_button_y + (icon_button_size + action_gap) * 3
+            erase_all_y = icon_button_y + (icon_button_size + action_gap) * 4
+            undo_y = icon_button_y + (icon_button_size + action_gap) * 5
+            menu_x = icon_button_x
+            menu_y = icon_button_y + (icon_button_size + action_gap) * 6
+        else:
+            pair_gap = 12
+            pair_width = icon_button_size * 2 + pair_gap
+            first_control_x = side_x + (button_width - pair_width) // 2
+            second_control_x = first_control_x + icon_button_size + pair_gap
+            notes_y = auto_notes_y = icon_button_y
+            erase_y = erase_all_y = icon_button_y + icon_button_size + 9
+            undo_y = icon_button_y + (icon_button_size + 9) * 2
+            menu_x = side_x + (button_width - icon_button_size) // 2
+            menu_y = icon_button_y + (icon_button_size + 9) * 3
 
         self.undo_button = Button(
-            icon_button_x,
-            icon_button_y + (icon_button_size + action_gap) * 4,
+            second_control_x,
+            undo_y,
             icon_button_size,
             icon_button_size,
             "",
@@ -334,8 +356,8 @@ class Game:
         )
 
         self.hint_button = Button(
-            icon_button_x,
-            icon_button_y,
+            first_control_x,
+            icon_button_y if PORTRAIT_MODE else undo_y,
             icon_button_size,
             icon_button_size,
             "",
@@ -344,8 +366,8 @@ class Game:
             hover_color=(255,248,235)
         )
         self.notes_button = Button(
-            icon_button_x,
-            icon_button_y + icon_button_size + action_gap,
+            first_control_x,
+            notes_y,
             icon_button_size,
             icon_button_size,
             "",
@@ -354,8 +376,8 @@ class Game:
             hover_color=(255,248,235)
         )
         self.erase_notes_button = Button(
-            icon_button_x,
-            icon_button_y + (icon_button_size + action_gap) * 3,
+            first_control_x,
+            erase_y,
             icon_button_size,
             icon_button_size,
             "",
@@ -364,8 +386,8 @@ class Game:
             hover_color=(255,248,235)
         )
         self.board_menu_button = Button(
-            icon_button_x,
-            icon_button_y + (icon_button_size + action_gap) * 5,
+            menu_x,
+            menu_y,
             icon_button_size,
             icon_button_size,
             "",
@@ -374,12 +396,22 @@ class Game:
             hover_color=(255,248,235)
         )
         self.auto_notes_button = Button(
-            icon_button_x,
-            icon_button_y + (icon_button_size + action_gap) * 2,
+            second_control_x,
+            auto_notes_y,
             icon_button_size,
             icon_button_size,
             "",
             self.pencil_icon,
+            bg_color=(255,255,255),
+            hover_color=(255,248,235)
+        )
+        self.erase_all_button = Button(
+            second_control_x,
+            erase_all_y,
+            icon_button_size,
+            icon_button_size,
+            "",
+            self.erase_icon,
             bg_color=(255,255,255),
             hover_color=(255,248,235)
         )
@@ -607,7 +639,7 @@ class Game:
         }
 
         try:
-            with open("settings.json", "w") as f:
+            with open(user_file("settings.json"), "w") as f:
                 json.dump(data, f, indent=4)
         except OSError as error:
             print("Settings could not be saved:", error)
@@ -666,6 +698,7 @@ class Game:
             logic.accuracy = data.get("accuracy", 100)
             logic.hint_tokens = self.stats.get_hint_tokens(difficulty)
             logic.auto_notes_tokens = self.stats.get_auto_notes_tokens()
+            logic.erase_all_tokens = self.stats.get_erase_all_tokens()
             logic.daily_challenge = data.get("daily_challenge", False)
             logic.game_mode = data.get("game_mode", "classic")
             logic.time_limit = data.get("time_limit")
@@ -697,7 +730,7 @@ class Game:
 
     def load_settings(self):
         try:
-            with open("settings.json", "r") as f:
+            with open(user_file("settings.json"), "r") as f:
                 data = json.load(f)
 
             self.base_theme = DARK if data.get("theme") == "dark" else LIGHT
@@ -1025,6 +1058,13 @@ class Game:
                 elif self.erase_notes_button.clicked(pos):
                     self.play_sound(self.click_sound)
                     self.logic.clear_notes()
+
+                elif self.erase_all_button.clicked(pos):
+                    self.play_sound(self.click_sound)
+                    erase_result = self.logic.erase_all()
+                    if erase_result == "ERASE_ALL":
+                        self.stats.set_erase_all_tokens(self.logic.erase_all_tokens)
+                        self.play_sound(self.hint_sound)
 
                 elif self.board_menu_button.clicked(pos):
                     self.play_sound(self.click_sound)
@@ -1582,6 +1622,7 @@ class Game:
                 self.hint_button,
                 self.notes_button,
                 self.erase_notes_button,
+                self.erase_all_button,
                 self.board_menu_button,
                 self.auto_notes_button,
             ):
@@ -1606,6 +1647,7 @@ class Game:
                 self.hint_button,
                 self.notes_button,
                 self.erase_notes_button,
+                self.erase_all_button,
                 self.board_menu_button,
                 self.auto_notes_button,
             ):
@@ -1621,6 +1663,7 @@ class Game:
             self.hint_button.draw(self.screen)
             self.notes_button.draw(self.screen)
             self.erase_notes_button.draw(self.screen)
+            self.erase_all_button.draw(self.screen)
             self.board_menu_button.draw(self.screen)
             self.auto_notes_button.draw(self.screen)
 
@@ -1640,6 +1683,18 @@ class Game:
             pygame.draw.circle(self.screen, self.theme["popup_border"], auto_center, 12, 2)
             auto_value = self.hint_token_value_font.render(str(self.logic.auto_notes_tokens), True, self.theme["text"])
             self.screen.blit(auto_value, auto_value.get_rect(center=auto_center))
+            erase_center = (self.erase_all_button.rect.right - 11, self.erase_all_button.rect.y + 12)
+            pygame.draw.circle(self.screen, self.theme["shadow"], (erase_center[0], erase_center[1] + 2), 12)
+            pygame.draw.circle(self.screen, self.theme["accent"], erase_center, 12)
+            pygame.draw.circle(self.screen, self.theme["popup_border"], erase_center, 12, 2)
+            erase_value = self.hint_token_value_font.render(str(self.logic.erase_all_tokens), True, self.theme["text"])
+            self.screen.blit(erase_value, erase_value.get_rect(center=erase_center))
+            erase_all_label_font = pygame.font.Font("assets/fonts/Poppins-ExtraBold.ttf", 9 if PORTRAIT_MODE else 8)
+            erase_all_label = erase_all_label_font.render("ALL", True, self.theme["text"])
+            self.screen.blit(
+                erase_all_label,
+                erase_all_label.get_rect(center=(self.erase_all_button.rect.centerx, self.erase_all_button.rect.bottom - 7)),
+            )
 
             if getattr(self, "hint_locked_until", 0) > pygame.time.get_ticks():
                 notice_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 16 if PORTRAIT_MODE else 18)
@@ -2591,6 +2646,7 @@ class Game:
         # A high-scoring win may have awarded a permanent Hint Token.
         self.logic.hint_tokens = self.stats.get_hint_tokens(self.logic.difficulty)
         self.logic.auto_notes_tokens = self.stats.get_auto_notes_tokens()
+        self.logic.erase_all_tokens = self.stats.get_erase_all_tokens()
         self.logic.result_rewards = {
             "coins": self.stats.data.get("coins", 0) - coins_before,
             "xp": self.stats.last_match_rewards.get("xp", 0),
@@ -2685,6 +2741,7 @@ class Game:
 
         self.logic.hint_tokens = self.stats.get_hint_tokens(self.difficulty)
         self.logic.auto_notes_tokens = self.stats.get_auto_notes_tokens()
+        self.logic.erase_all_tokens = self.stats.get_erase_all_tokens()
 
         self.logic.difficulty = self.difficulty.capitalize()
 
@@ -2717,6 +2774,7 @@ class Game:
         self.logic.daily_challenge = True
         self.logic.hint_tokens = self.stats.get_hint_tokens("medium")
         self.logic.auto_notes_tokens = self.stats.get_auto_notes_tokens()
+        self.logic.erase_all_tokens = self.stats.get_erase_all_tokens()
         self.board.logic = self.logic
         self.board.display_score = 0
         self.play_music_track("medium")

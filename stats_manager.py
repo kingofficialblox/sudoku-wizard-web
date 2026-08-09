@@ -2,11 +2,13 @@ import json
 import os
 from datetime import date
 
+from app_paths import user_file
+
 
 class StatsManager:
     """Persistent lifetime statistics and level progression."""
 
-    FILE_NAME = "stats.json"
+    FILE_NAME = user_file("stats.json")
     MODES = ("easy", "medium", "hard")
     COSMETICS = {
         "violet": {"name": "VIOLET ARC", "cost": 0, "accent": (128, 70, 255)},
@@ -34,6 +36,7 @@ class StatsManager:
             "coins": 0,
             "hint_tokens": 0,
             "auto_notes_tokens": 0,
+            "erase_all_tokens": 0,
             "achievements": {},
             "win_streak": 0,
             "best_streak": 0,
@@ -287,6 +290,21 @@ class StatsManager:
             return False
         self.data["coins"] -= cost
         self.data["auto_notes_tokens"] += 1
+        self.save()
+        return True
+
+    def get_erase_all_tokens(self):
+        return self.data.get("erase_all_tokens", 0)
+
+    def set_erase_all_tokens(self, amount):
+        self.data["erase_all_tokens"] = max(0, amount)
+        self.save()
+
+    def buy_erase_all(self, cost):
+        if self.data["coins"] < cost:
+            return False
+        self.data["coins"] -= cost
+        self.data["erase_all_tokens"] += 1
         self.save()
         return True
 

@@ -23,11 +23,18 @@ class SettingsMenu:
 
     def _layout(self):
         center_x = WIDTH // 2
-        self.music_slider.center = (center_x, 380)
-        self.sfx_slider.center = (center_x, 520)
-        self.theme_button.center = (center_x, 675)
-        self.animation_button.center = (center_x, 755)
-        self.back_button.center = (center_x, 855)
+        if PORTRAIT_MODE:
+            self.music_slider.center = (center_x, 380)
+            self.sfx_slider.center = (center_x, 520)
+            self.theme_button.center = (center_x, 675)
+            self.animation_button.center = (center_x, 755)
+            self.back_button.center = (center_x, 855)
+        else:
+            self.music_slider.center = (center_x, 320)
+            self.sfx_slider.center = (center_x, 440)
+            self.theme_button.center = (center_x, 570)
+            self.animation_button.center = (center_x, 650)
+            self.back_button.center = (center_x, 750)
 
     @staticmethod
     def _hit_box(slider):
@@ -52,7 +59,11 @@ class SettingsMenu:
                 self.dragging = "sfx"
                 self._set_volume("sfx", pos[0])
             elif self.theme_button.collidepoint(pos):
-                self.game.theme = DARK if self.game.theme == LIGHT else LIGHT
+                # Store the base theme rather than only changing the current
+                # display colors.  Aura colors are reapplied afterwards, so
+                # the selected theme now survives closing and reopening.
+                self.game.base_theme = DARK if self.game.base_theme == LIGHT else LIGHT
+                self.game.apply_cosmetic_aura()
                 self.game.save_settings()
                 self.game.play_sound(self.game.click_sound)
             elif self.animation_button.collidepoint(pos):
@@ -99,15 +110,22 @@ class SettingsMenu:
         self._layout()
         theme = self.game.theme
         self.screen.fill(theme["background"])
-        panel = pygame.Rect(WIDTH // 2 - 310, 105, 620, 810)
+        panel = (
+            pygame.Rect(WIDTH // 2 - 310, 105, 620, 810)
+            if PORTRAIT_MODE else
+            pygame.Rect(WIDTH // 2 - 310, 55, 620, HEIGHT - 110)
+        )
         pygame.draw.rect(self.screen, theme["shadow"], panel.move(0, 8), border_radius=28)
         pygame.draw.rect(self.screen, theme["popup"], panel, border_radius=28)
         pygame.draw.rect(self.screen, theme["popup_border"], panel, 2, border_radius=28)
         title = self.title_font.render("Settings", True, theme["text"])
-        self.screen.blit(title, title.get_rect(center=(WIDTH // 2, 185)))
+        title_y = 185 if PORTRAIT_MODE else panel.y + 70
+        subtitle_y = 230 if PORTRAIT_MODE else panel.y + 115
+        divider_y = 275 if PORTRAIT_MODE else panel.y + 155
+        self.screen.blit(title, title.get_rect(center=(WIDTH // 2, title_y)))
         subtitle = self.small_font.render("Customize your game experience", True, theme["secondary"])
-        self.screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, 230)))
-        pygame.draw.line(self.screen, theme["popup_border"], (panel.x + 55, 275), (panel.right - 55, 275), 2)
+        self.screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, subtitle_y)))
+        pygame.draw.line(self.screen, theme["popup_border"], (panel.x + 55, divider_y), (panel.right - 55, divider_y), 2)
         self._draw_slider("Music", self.music_slider, self.game.music_volume, self.game.music_icon)
         self._draw_slider("Sound effects", self.sfx_slider, self.game.sfx_volume, self.game.sfx_icon)
         mode = "Dark" if self.game.theme == DARK else "Light"

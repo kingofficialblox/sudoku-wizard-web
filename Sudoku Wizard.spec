@@ -1,12 +1,27 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
+from pathlib import Path
+
+import pygame
+
+python_license = Path(sys.base_prefix) / 'LICENSE.txt'
+pygame_license = Path(pygame.__file__).resolve().parent / 'docs' / 'generated' / 'LGPL.txt'
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets', 'assets')],
-    hiddenimports=[],
+    datas=[
+        ('assets', 'assets'),
+        ('PRIVACY.md', '.'),
+        ('SUPPORT.md', '.'),
+        ('THIRD_PARTY_NOTICES.md', '.'),
+        (str(python_license), 'licenses'),
+        (str(pygame_license), 'licenses'),
+        ('licenses/POPPINS-OFL.txt', 'licenses'),
+    ],
+    hiddenimports=['typing_extensions'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -33,6 +48,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['assets\\images\\game_logo.ico'],
+    version='version_info.txt',
 )
 coll = COLLECT(
     exe,

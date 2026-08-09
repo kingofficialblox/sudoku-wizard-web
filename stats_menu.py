@@ -11,11 +11,11 @@ class StatsMenu:
         self.selected = "overall"
         self.title_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 54)
         # Compact values prevent long lifetime-stat labels from crowding cards.
-        self.font = pygame.font.Font("assets/fonts/Poppins-Regular.ttf", 19 if PORTRAIT_MODE else 23)
-        self.value_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 24 if PORTRAIT_MODE else 27)
+        self.font = pygame.font.Font("assets/fonts/Poppins-Regular.ttf", 19 if PORTRAIT_MODE else 18)
+        self.value_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 24 if PORTRAIT_MODE else 22)
         labels = ("OVERALL", "EASY", "MEDIUM", "HARD")
         self.mode_buttons = [Button(0, 0, 140, 52, label) for label in labels]
-        back_y = HEIGHT - (320 if PORTRAIT_MODE else 165)
+        back_y = HEIGHT - (320 if PORTRAIT_MODE else 80)
         self.back_button = Button(WIDTH // 2 - 110, back_y, 220, 55, "BACK")
 
     def handle_event(self, event):
@@ -75,7 +75,7 @@ class StatsMenu:
         theme = self.game.theme
         self.screen.fill(theme["background"])
         panel_width = 620 if WIDTH < 900 else 820
-        panel_bottom_margin = 250 if PORTRAIT_MODE else 160
+        panel_bottom_margin = 250 if PORTRAIT_MODE else 170
         panel = pygame.Rect(WIDTH // 2 - panel_width // 2, 60, panel_width, HEIGHT - panel_bottom_margin)
         pygame.draw.rect(self.screen, theme["shadow"], panel.move(0, 8), border_radius=28)
         pygame.draw.rect(self.screen, theme["popup"], panel, border_radius=28)
@@ -107,13 +107,15 @@ class StatsMenu:
             card_width = 250 if WIDTH < 900 else 330
             card_gap = 10 if WIDTH < 900 else 30
             card_x = panel.x + 55 + col * (card_width + card_gap)
-            card = pygame.Rect(card_x, 335 + row * 82, card_width, 64)
+            card_y = 335 + row * (82 if PORTRAIT_MODE else 62)
+            card_height = 64 if PORTRAIT_MODE else 52
+            card = pygame.Rect(card_x, card_y, card_width, card_height)
             pygame.draw.rect(self.screen, theme["button"], card, border_radius=14)
             pygame.draw.rect(self.screen, theme["popup_border"], card, 1, border_radius=14)
             label_surface = self.font.render(label, True, theme["secondary"])
             value_surface = self.value_font.render(value, True, theme["text"])
-            self.screen.blit(label_surface, (card.x + 15, card.y + 8))
-            self.screen.blit(value_surface, (card.right - value_surface.get_width() - 15, card.y + 30))
+            self.screen.blit(label_surface, (card.x + 15, card.y + (8 if PORTRAIT_MODE else 4)))
+            self.screen.blit(value_surface, (card.right - value_surface.get_width() - 15, card.y + (30 if PORTRAIT_MODE else 24)))
 
         self.back_button.bg_color = theme["button"]
         self.back_button.hover_color = theme["button_hover"]

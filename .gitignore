@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 build/
 dist/
+release/
+release_build/
+settings.json
+saved_game.json
+stats.json

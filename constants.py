@@ -3,6 +3,8 @@
 import os
 import sys
 
+APP_VERSION = "1.0.0"
+
 # ==================== WINDOW ====================
 PORTRAIT_MODE = (
     os.environ.get("SUDOKU_PORTRAIT") == "1"
@@ -26,10 +28,10 @@ FPS = 30 if PORTRAIT_MODE else 60
 # ==================== BOARD ====================
 ROWS = 9
 COLS = 9
-CELL_SIZE = 60 if PORTRAIT_MODE else 68
+CELL_SIZE = 60 if PORTRAIT_MODE else 62
 
 BOARD_X = (WIDTH - CELL_SIZE * 9) // 2
-BOARD_Y = 400 if PORTRAIT_MODE else 265
+BOARD_Y = 400 if PORTRAIT_MODE else 235
 HEADER_HEIGHT = 320 if PORTRAIT_MODE else 170
 BUTTON_Y = 45
 

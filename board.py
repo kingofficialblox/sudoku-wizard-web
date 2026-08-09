@@ -47,7 +47,7 @@ class Board:
         self.win_result_background = pygame.transform.smoothscale(
             self.win_result_source, (WIDTH, HEIGHT)
         )
-        win_panel_size = (650, 1000) if PORTRAIT_MODE else (900, 900)
+        win_panel_size = (650, 1000) if PORTRAIT_MODE else (860, 790)
         self.win_panel_fade = pygame.transform.smoothscale(
             self.win_result_background, win_panel_size
         )
@@ -91,7 +91,8 @@ class Board:
         ).convert_alpha()
 
 
-        self.trophy = pygame.transform.smoothscale(self.trophy, (250, 250))
+        trophy_size = 250 if PORTRAIT_MODE else 180
+        self.trophy = pygame.transform.smoothscale(self.trophy, (trophy_size, trophy_size))
 
         self.timer_icon = pygame.transform.smoothscale(self.timer_icon, (40, 40))
 
@@ -107,7 +108,8 @@ class Board:
             self.score_icon,
             (40, 40)
         )
-        self.star_icon = pygame.transform.smoothscale(self.star_icon, (100, 100))     
+        star_icon_size = 100 if PORTRAIT_MODE else 72
+        self.star_icon = pygame.transform.smoothscale(self.star_icon, (star_icon_size, star_icon_size))
 
         self.exit_icon = pygame.transform.smoothscale(self.exit_icon, (30, 30))
         
@@ -146,16 +148,16 @@ class Board:
 
         self.win_font = pygame.font.Font(
             "assets/fonts/Poppins-Bold.ttf",
-            68
+            58
         )
         self.win_mobile_title_font = pygame.font.Font(
             "assets/fonts/Poppins-Bold.ttf", 48
         )
         self.win_label_font = pygame.font.Font(
-            "assets/fonts/Poppins-Regular.ttf", 28
+            "assets/fonts/Poppins-Regular.ttf", 28 if PORTRAIT_MODE else 22
         )
         self.win_value_font = pygame.font.Font(
-            "assets/fonts/Poppins-Bold.ttf", 30
+            "assets/fonts/Poppins-Bold.ttf", 30 if PORTRAIT_MODE else 25
         )
 
         self.popup_font = pygame.font.Font(
@@ -848,8 +850,8 @@ class Board:
         screen.blit(self.win_overlay, (0, 0))
 
 
-        popup_width = int((650 if PORTRAIT_MODE else 900) * scale)
-        popup_height = int((1000 if PORTRAIT_MODE else 900) * scale)
+        popup_width = int((650 if PORTRAIT_MODE else 860) * scale)
+        popup_height = int((1000 if PORTRAIT_MODE else 790) * scale)
 
         popup = pygame.Rect(
             WIDTH//2 - popup_width//2,
@@ -896,7 +898,7 @@ class Board:
         # ---------------- TROPHY ----------------
 
         trophy_x = WIDTH//2 - self.trophy.get_width()//2
-        trophy_y = popup.y + 1
+        trophy_y = popup.y + (1 if PORTRAIT_MODE else 5)
         screen.blit(
             self.trophy,
             (trophy_x, trophy_y)
@@ -915,7 +917,7 @@ class Board:
         screen.blit(
             title,
             title.get_rect(
-                center=(WIDTH//2,popup.y+300)
+                center=(WIDTH//2, popup.y + (300 if PORTRAIT_MODE else 225))
             )
         )
 
@@ -925,13 +927,13 @@ class Board:
         count = self.logic.stars
 
 
-        star_size = 100
-        spacing = 100
+        star_size = 100 if PORTRAIT_MODE else 72
+        spacing = 100 if PORTRAIT_MODE else 82
 
         total_width = spacing * 4 + star_size
         start_x = WIDTH//2 - total_width//2
 
-        star_y = popup.y + 340
+        star_y = popup.y + (340 if PORTRAIT_MODE else 270)
 
 
         for i in range(5):
@@ -961,10 +963,10 @@ class Board:
         # ---------------- STATS CARD ----------------
 
         stats_card = pygame.Rect(
-            popup.x + 80,
-            popup.y + 420,
-            popup.width - 160,
-            300
+            popup.x + (80 if PORTRAIT_MODE else 70),
+            popup.y + (420 if PORTRAIT_MODE else 360),
+            popup.width - (160 if PORTRAIT_MODE else 140),
+            300 if PORTRAIT_MODE else 250
         )
 
         pygame.draw.rect(
@@ -1008,14 +1010,14 @@ class Board:
 
         label_font = self.win_label_font
         value_font = self.win_value_font
-        y = stats_card.y + 35
+        y = stats_card.y + (35 if PORTRAIT_MODE else 27)
 
         for icon,label,value in stats:
             if icon:
                 screen.blit(
                     icon,
                     (
-                        stats_card.x + 25,
+                        stats_card.x + (25 if PORTRAIT_MODE else 22),
                         y - 4
                     )
                 )
@@ -1048,7 +1050,7 @@ class Board:
             screen.blit(
                 l,
                 (
-                    stats_card.x + 75,
+                    stats_card.x + (75 if PORTRAIT_MODE else 68),
                     y
                 )
             )
@@ -1057,13 +1059,13 @@ class Board:
                 v,
                 v.get_rect(
                     midright=(
-                        stats_card.right - 45,
-                        y + 18
+                        stats_card.right - (45 if PORTRAIT_MODE else 35),
+                        y + (18 if PORTRAIT_MODE else 14)
                     )
                 )
             )
 
-            y += 52
+            y += 52 if PORTRAIT_MODE else 43
 
         rewards = getattr(self.logic, "result_rewards", None)
         if rewards:
