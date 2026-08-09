@@ -5,6 +5,7 @@ import generator
 
 class SudokuLogic:
 
+
     def __init__(self, difficulty="MEDIUM"):
         difficulty = difficulty.lower()
         self.difficulty = difficulty.capitalize()
@@ -38,6 +39,11 @@ class SudokuLogic:
         
         self.mistakes = 0
         self.hints_used = 0
+        # Game supplies the player's persistent Hint Token balance.
+        self.hint_tokens = 0
+        self.auto_notes_tokens = 0
+        self.correct_answers = 0
+        self.hint_earned_time = 0
         self.numbers_entered = 0
 
         self.invalid_cell = None
@@ -45,6 +51,11 @@ class SudokuLogic:
         self.invalid_time = 0
         self.game_won = False
         self.game_over = False
+        # Classic has the normal three-mistake limit.  Game selects the
+        # remaining modes immediately after a difficulty is chosen.
+        self.game_mode = "classic"
+        self.mistake_limit = 3
+        self.reveal_mistakes = False
         self.popup_scale = 0.0
         # Timer
         self.start_time = time.time()
@@ -71,9 +82,12 @@ class SudokuLogic:
         self.score_popup_color = None
         self.score_popup_time = 0
         self.score_popup_y = 0
+        self.last_action = None
+        self.last_hint_time = 0
+        self.last_undo_time = 0
 
     def update_stars(self):
-        """Award stars from score using a competitive scale per difficulty."""
+        """Award stars by score, preserving Classic difficulty thresholds."""
         # The first star represents completing a puzzle.  Further stars need
         # increasingly strong scores, with Hard requiring the most points.
         thresholds = {
@@ -81,7 +95,19 @@ class SudokuLogic:
             "Medium": (7_000, 12_000, 17_000, 23_000),
             "Hard": (12_000, 18_000, 25_000, 33_000),
         }
-        self.stars = sum(self.score >= threshold for threshold in thresholds[self.difficulty]) + 1 if self.score else 0
+        # Classic remains exactly tied to the original Easy / Medium / Hard
+        # thresholds.  The optional modes have their own reward balance.
+        game_mode = getattr(self, "game_mode", "classic")
+        mode_multiplier = {
+            "classic": 1.0,
+            "zen": 1.25,       # Relaxed play has no mistake limit.
+            "timed": 0.80,     # Short competitive rounds reward speed.
+            "practice": 1.75,  # Revealed answers should not farm stars.
+        }.get(game_mode, 1.0)
+        mode_thresholds = tuple(int(threshold * mode_multiplier) for threshold in thresholds[self.difficulty])
+        stars = sum(self.score >= threshold for threshold in mode_thresholds) + 1 if self.score else 0
+        # Practice remains a learning mode, capped below a perfect reward.
+        self.stars = min(stars, 3) if game_mode == "practice" else stars
     
     def get_elapsed_time(self):
         if self.game_won or self.game_over:
@@ -155,6 +181,49 @@ class SudokuLogic:
         self.score_popup_time = time.time()
         self.score_popup_y = 0
 
+    def remove_peer_notes(self, row, col, number):
+        """Remove a placed candidate from its row, column and 3x3 box."""
+        for index in range(9):
+            self.notes[row][index].discard(number)
+            self.notes[index][col].discard(number)
+
+        box_row = (row // 3) * 3
+        box_col = (col // 3) * 3
+        for note_row in range(box_row, box_row + 3):
+            for note_col in range(box_col, box_col + 3):
+                self.notes[note_row][note_col].discard(number)
+
+    def save_history(self, row, col, action="move"):
+        """Save every value Undo must restore, not just the visible cell."""
+        self.history.append({
+            "row": row,
+            "col": col,
+            "value": self.grid[row][col],
+            "grid": [grid_row[:] for grid_row in self.grid],
+            "action": action,
+            "notes": [[cell.copy() for cell in note_row] for note_row in self.notes],
+            "fixed": [fixed_row[:] for fixed_row in self.fixed],
+            "score": self.score,
+            "mistakes": self.mistakes,
+            "numbers_entered": self.numbers_entered,
+            "hints_used": self.hints_used,
+            "hint_tokens": self.hint_tokens,
+            "correct_answers": self.correct_answers,
+            "stars": self.stars,
+            "game_won": self.game_won,
+            "game_over": self.game_over,
+            "end_time": self.end_time,
+            "accuracy": self.accuracy,
+        })
+
+    def is_duplicate_action(self, action):
+        now = time.time()
+        if self.last_action == action and now - getattr(self, "last_action_time", 0) < 0.35:
+            return True
+        self.last_action = action
+        self.last_action_time = now
+        return False
+
     def place_number(self, number, notes_mode=False):
         if self.selected is None:
             return None
@@ -167,21 +236,35 @@ class SudokuLogic:
         if self.grid[row][col] != 0:
             return None
 
+        if self.is_duplicate_action(("place", row, col, number, notes_mode)):
+            return "DUPLICATE"
+
         if notes_mode:
             if number in self.notes[row][col]:
+                self.save_history(row, col)
                 self.notes[row][col].remove(number)
-            else:
+            elif self.is_valid(row, col, number):
+                self.save_history(row, col)
                 self.notes[row][col].add(number)
+            else:
+                # Notes follow the same Sudoku rules: impossible candidates
+                # are ignored and can never be written into the cell.
+                return "INVALID_NOTE"
 
-            return
+            # Notes are undoable just like normal placements.
+            return "NOTE"
 
         # Save for Undo
-        self.history.append((row, col, self.grid[row][col]))
+        self.save_history(row, col)
         self.numbers_entered += 1
 
         # Correct number
         if number == self.solution[row][col]:
             self.grid[row][col] = number
+            # Keep the newly filled cell active, including on Android.
+            self.selected = (row, col)
+            self.highlight_number = number
+            self.correct_answers += 1
             # One placement can complete several goals.  Keep a single
             # running total so the floating score reports the whole move.
             move_score = self.scoring["correct"]
@@ -191,6 +274,7 @@ class SudokuLogic:
             self.pop_time = time.time()
             self.pop_scale = 1.6
             self.notes[row][col].clear()
+            self.remove_peer_notes(row, col, number)
             
             # ---------- Check completed row ----------
             if all(self.grid[row][c] != 0 for c in range(9)):
@@ -264,7 +348,18 @@ class SudokuLogic:
             self.invalid_number = number
             self.invalid_time = time.time()
             self.update_stars()
-            if self.mistakes >= 3:
+            if self.reveal_mistakes:
+                # Practice keeps the round moving by revealing the answer.
+                self.grid[row][col] = self.solution[row][col]
+                self.notes[row][col].clear()
+                if self.is_solved():
+                    self.game_won = True
+                    self.end_time = time.time()
+                    self.popup_scale = 0.0
+                    self.update_stars()
+                    return "WIN"
+                return "PRACTICE_REVEAL"
+            if self.mistake_limit is not None and self.mistakes >= self.mistake_limit:
                 self.game_over = True
                 self.end_time = time.time()
                 self.popup_scale = 0.0
@@ -272,12 +367,91 @@ class SudokuLogic:
             return False
 
     def undo(self):
-        if not self.history:
-            return
-        row, col, value = self.history.pop()
+        now = time.time()
+        if not self.history or now - self.last_undo_time < 0.35:
+            return "EMPTY"
+        entry = self.history[-1]
+        # A final Hint Token cannot be recycled with Undo.  The clue stays on
+        # the board until the player earns another token through correct play.
+        if isinstance(entry, dict) and entry.get("action") == "hint" and self.hint_tokens <= 0:
+            return "HINT_LOCKED"
+        self.last_undo_time = now
+        entry = self.history.pop()
+        if isinstance(entry, dict):
+            # Restore a complete snapshot.  A hint changes more than one
+            # visible state (the cell, fixed status, notes, score and token).
+            # Restoring the whole board makes that reversal dependable.
+            self.grid = [grid_row[:] for grid_row in entry.get("grid", self.grid)]
+            if "grid" not in entry:
+                self.grid[entry["row"]][entry["col"]] = entry["value"]
+            self.notes = entry["notes"]
+            self.fixed = entry["fixed"]
+            self.score = entry["score"]
+            self.mistakes = entry["mistakes"]
+            self.numbers_entered = entry["numbers_entered"]
+            self.hints_used = entry["hints_used"]
+            # Hints are never refunded by Undo.  This prevents a player from
+            # repeatedly using the same final token for unlimited clues.
+            if entry.get("action") != "hint":
+                self.hint_tokens = entry.get("hint_tokens", self.hint_tokens)
+            self.correct_answers = entry.get("correct_answers", self.correct_answers)
+            self.stars = entry["stars"]
+            self.game_won = entry["game_won"]
+            self.game_over = entry["game_over"]
+            self.end_time = entry["end_time"]
+            self.accuracy = entry["accuracy"]
+            self.flash_row = self.flash_col = self.flash_box = None
+            self.invalid_cell = None
+            self.score_popup_text = None
+            self.score_pop_type = None
+            return "UNDONE"
+
+        # Compatibility with any history created before this update.
+        row, col, value = entry[:3]
         self.grid[row][col] = value
+        if len(entry) > 3:
+            self.notes = entry[3]
+        return "UNDONE"
+
+    def clear_notes(self):
+        """Erase every candidate note from the currently selected cell."""
+        if self.selected is None:
+            return
+
+        row, col = self.selected
+        if self.fixed[row][col] or not self.notes[row][col]:
+            return
+
+        self.save_history(row, col)
+        self.notes[row][col].clear()
+
+    def apply_auto_notes(self):
+        """Fill every empty cell with only its currently valid candidates."""
+        if self.auto_notes_tokens <= 0:
+            return "NO_AUTO_NOTES"
+        self.auto_notes_tokens -= 1
+        filled = 0
+        for row in range(9):
+            for col in range(9):
+                if self.grid[row][col] != 0:
+                    self.notes[row][col].clear()
+                    continue
+                candidates = set(range(1, 10))
+                candidates -= set(self.grid[row])
+                candidates -= {self.grid[r][col] for r in range(9)}
+                box_row, box_col = row // 3 * 3, col // 3 * 3
+                candidates -= {self.grid[r][c] for r in range(box_row, box_row + 3) for c in range(box_col, box_col + 3)}
+                self.notes[row][col] = candidates
+                filled += len(candidates)
+        return "AUTO_NOTES" if filled else "NO_EMPTY_CELLS"
 
     def give_hint(self):
+        now = time.time()
+        if now - self.last_hint_time < 0.35:
+            return "DUPLICATE"
+        self.last_hint_time = now
+        if self.hint_tokens <= 0:
+            return "NO_HINTS"
         empty_cells = []
 
         for row in range(9):
@@ -286,19 +460,24 @@ class SudokuLogic:
                     empty_cells.append((row, col))
 
         if not empty_cells:
-            return
+            return "NO_CELLS"
 
         import random
 
         row, col = random.choice(empty_cells)
+        self.save_history(row, col, action="hint")
+        self.hint_tokens -= 1
         self.hints_used += 1
         self.grid[row][col] = self.solution[row][col]
+        self.notes[row][col].clear()
+        self.remove_peer_notes(row, col, self.solution[row][col])
         self.score = max(0, self.score - self.scoring["hint"])
         self.show_score_popup(-self.scoring["hint"])
         self.update_stars()
         self.score_pop_time = time.time()
         self.score_pop_type = "down"
         self.fixed[row][col] = True
+        return "HINT"
 
     def restart(self):
         self.grid = [row[:] for row in self.original_grid]
@@ -321,6 +500,9 @@ class SudokuLogic:
 
         self.mistakes = 0
         self.hints_used = 0
+        # Resetting a puzzle never resets the player's earned Hint Tokens.
+        self.correct_answers = 0
+        self.hint_earned_time = 0
         self.numbers_entered = 0
 
         self.invalid_cell = None
@@ -335,6 +517,9 @@ class SudokuLogic:
         self.paused = False
         self.pause_start = 0
         self.end_time = None
+        self.last_action = None
+        self.last_hint_time = 0
+        self.last_undo_time = 0
 
     def solve(self):
         self.grid = [row[:] for row in self.solution]
@@ -391,10 +576,8 @@ class SudokuLogic:
         if self.fixed[row][col]:
             return
 
-        # Save for Undo
-        self.history.append(
-            (row, col, self.grid[row][col])
-        )
+        # Save the complete pre-clear state for Undo.
+        self.save_history(row, col)
 
         self.grid[row][col] = 0
 

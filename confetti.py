@@ -1,7 +1,7 @@
 import pygame
 import random
 import math
-from constants import WIDTH, HEIGHT
+from constants import WIDTH, HEIGHT, PORTRAIT_MODE
 
 
 class Confetti:
@@ -32,6 +32,16 @@ class Confetti:
 
         self.angle = random.randint(0, 360)
         self.spin = random.uniform(-18, 18)
+        self.shape = random.randint(0, 2)
+        # Creating and rotating hundreds of surfaces every frame is expensive
+        # on phones. Build each particle once and reuse it.
+        self.surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        if self.shape == 0:
+            pygame.draw.rect(self.surface, self.color, (0, 0, self.width, self.height), border_radius=2)
+        elif self.shape == 1:
+            pygame.draw.ellipse(self.surface, self.color, (0, 0, self.width, self.height))
+        else:
+            pygame.draw.polygon(self.surface, self.color, [(self.width // 2, 0), (self.width, self.height // 2), (self.width // 2, self.height), (0, self.height // 2)])
 
     def update(self):
         # Update position from velocity
@@ -56,44 +66,8 @@ class Confetti:
 
     def draw(self, screen):
 
-        surface = pygame.Surface(
-            (self.width, self.height),
-            pygame.SRCALPHA
-        )
-
-        shape = random.randint(0, 2)
-
-        if shape == 0:
-            pygame.draw.rect(
-                surface,
-                self.color,
-                (0, 0, self.width, self.height),
-                border_radius=2
-            )
-
-        elif shape == 1:
-            pygame.draw.ellipse(
-                surface,
-                self.color,
-                (0, 0, self.width, self.height)
-            )
-
-        else:
-            pygame.draw.polygon(
-                surface,
-                self.color,
-                [
-                    (self.width//2, 0),
-                    (self.width, self.height//2),
-                    (self.width//2, self.height),
-                    (0, self.height//2)
-                ]
-            )
-
-        rotated = pygame.transform.rotate(
-            surface,
-            self.angle
-        )
+        # Portrait celebration favors smoothness over per-piece rotation.
+        rotated = self.surface if PORTRAIT_MODE else pygame.transform.rotate(self.surface, self.angle)
 
         rect = rotated.get_rect(
             center=(self.x, self.y)

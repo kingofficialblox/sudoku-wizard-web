@@ -86,17 +86,26 @@ class Button:
             icon = pygame.transform.smoothscale(self.icon, image_size)
             icon_rect = icon.get_rect(center=draw_rect.center)
 
-            if self.hover_amount:
+            if self.hover_amount or self.selected:
                 glow = pygame.Surface(
                     (icon_rect.width + 20, icon_rect.height + 20),
                     pygame.SRCALPHA,
                 )
                 pygame.draw.ellipse(
                     glow,
-                    (*self.border_color, int(55 * self.hover_amount)),
+                    (*self.border_color, 80 if self.selected else int(55 * self.hover_amount)),
                     glow.get_rect(),
                 )
                 screen.blit(glow, (icon_rect.x - 10, icon_rect.y - 10))
+
+            if self.selected:
+                pygame.draw.circle(
+                    screen,
+                    PRIMARY,
+                    icon_rect.center,
+                    max(icon_rect.width, icon_rect.height) // 2 + 5,
+                    3,
+                )
 
             screen.blit(icon, icon_rect)
             return

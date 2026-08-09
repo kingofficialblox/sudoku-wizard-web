@@ -11,17 +11,25 @@ PORTRAIT_MODE = (
     or hasattr(sys, "getandroidapilevel")
 )
 
+# 20:9 is the common modern phone layout.  Pydroid renders directly into this
+# portrait canvas, keeping the board square while using the full screen.
 WIDTH = 720 if PORTRAIT_MODE else 1450
-HEIGHT = 1280 if PORTRAIT_MODE else 1040
-FPS = 60
+# The desktop UI ends just below the board at roughly 880 px. Keeping a
+# 1040 px design canvas only added unused space and forced the entire game to
+# shrink on common 900/1080 px monitors. This near-16:10 canvas fills laptop
+# and desktop displays much more naturally while still scaling proportionally.
+HEIGHT = 1600 if PORTRAIT_MODE else 900
+# Phones benefit more from stable frame pacing than from a costly 60 FPS draw.
+# A steady 30 FPS is substantially smoother than dropped frames on Pydroid.
+FPS = 30 if PORTRAIT_MODE else 60
 
 # ==================== BOARD ====================
 ROWS = 9
 COLS = 9
-CELL_SIZE = 54 if PORTRAIT_MODE else 68
+CELL_SIZE = 60 if PORTRAIT_MODE else 68
 
 BOARD_X = (WIDTH - CELL_SIZE * 9) // 2
-BOARD_Y = 555 if PORTRAIT_MODE else 265
+BOARD_Y = 400 if PORTRAIT_MODE else 265
 HEADER_HEIGHT = 320 if PORTRAIT_MODE else 170
 BUTTON_Y = 45
 
@@ -67,4 +75,4 @@ SCORE_HINT_PENALTY = -100
 SCORE_MISTAKE_PENALTY = -150
 
 # ==================== VISUAL SETTINGS ====================
-CONFETTI_COUNT = 800
+CONFETTI_COUNT = 8 if PORTRAIT_MODE else 800

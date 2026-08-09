@@ -1,7 +1,7 @@
 import pygame
 
 from button import Button
-from constants import HEIGHT, WIDTH
+from constants import HEIGHT, WIDTH, PORTRAIT_MODE
 
 
 class StatsMenu:
@@ -10,11 +10,13 @@ class StatsMenu:
         self.screen = game.screen
         self.selected = "overall"
         self.title_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 54)
-        self.font = pygame.font.Font("assets/fonts/Poppins-Regular.ttf", 23)
-        self.value_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 27)
+        # Compact values prevent long lifetime-stat labels from crowding cards.
+        self.font = pygame.font.Font("assets/fonts/Poppins-Regular.ttf", 19 if PORTRAIT_MODE else 23)
+        self.value_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 24 if PORTRAIT_MODE else 27)
         labels = ("OVERALL", "EASY", "MEDIUM", "HARD")
         self.mode_buttons = [Button(0, 0, 140, 52, label) for label in labels]
-        self.back_button = Button(WIDTH // 2 - 110, HEIGHT - 165, 220, 55, "BACK")
+        back_y = HEIGHT - (320 if PORTRAIT_MODE else 165)
+        self.back_button = Button(WIDTH // 2 - 110, back_y, 220, 55, "BACK")
 
     def handle_event(self, event):
         if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
@@ -49,6 +51,7 @@ class StatsMenu:
             most_hints = max((mode["most_hints"] for mode in modes), default=0)
             return [
                 ("Matches won", str(wins)), ("Total matches", str(matches)),
+                ("Current win streak", str(data["win_streak"])), ("Best win streak", str(data["best_streak"])),
                 ("Win percentage", f"{(wins / matches * 100) if matches else 0:.0f}%"),
                 ("Average score", f"{scores // matches if matches else 0:,}"),
                 ("Fastest solve", self._time(min(times) if times else None)),
@@ -72,7 +75,8 @@ class StatsMenu:
         theme = self.game.theme
         self.screen.fill(theme["background"])
         panel_width = 620 if WIDTH < 900 else 820
-        panel = pygame.Rect(WIDTH // 2 - panel_width // 2, 60, panel_width, HEIGHT - 160)
+        panel_bottom_margin = 250 if PORTRAIT_MODE else 160
+        panel = pygame.Rect(WIDTH // 2 - panel_width // 2, 60, panel_width, HEIGHT - panel_bottom_margin)
         pygame.draw.rect(self.screen, theme["shadow"], panel.move(0, 8), border_radius=28)
         pygame.draw.rect(self.screen, theme["popup"], panel, border_radius=28)
         pygame.draw.rect(self.screen, theme["popup_border"], panel, 2, border_radius=28)

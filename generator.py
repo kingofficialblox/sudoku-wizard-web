@@ -91,21 +91,89 @@ class SudokuGenerator:
         Returns:
             The puzzle board with some cells removed
         """
-        # Reset board
-        self.board = [[0 for _ in range(9)] for _ in range(9)]
-        
-        # Fill complete solution
-        self.fill_board()
-        
-        # Save the complete solution
-        self.solution = [row[:] for row in self.board]
-        
-        # Remove numbers based on difficulty
-        self.remove_numbers(difficulty)
-        
+        # A puzzle is accepted only when it has one solution and can be
+        # completed through standard logical singles—never a forced guess.
+        for _ in range(40):
+            self.board = [[0 for _ in range(9)] for _ in range(9)]
+            self.fill_board()
+            self.solution = [row[:] for row in self.board]
+            if self.remove_numbers(difficulty):
+                return self.board
+        # The fallback still preserves uniqueness and logical solvability;
+        # it may simply contain a few more clues on a very unlucky seed.
         return self.board
 
-    def remove_numbers(self, difficulty: str = "MEDIUM") -> None:
+    @staticmethod
+    def _candidates(grid: List[List[int]], row: int, col: int) -> set[int]:
+        if grid[row][col]:
+            return set()
+        used = set(grid[row])
+        used.update(grid[r][col] for r in range(9))
+        box_row, box_col = row // 3 * 3, col // 3 * 3
+        used.update(grid[r][c] for r in range(box_row, box_row + 3) for c in range(box_col, box_col + 3))
+        return set(range(1, 10)) - used
+
+    @classmethod
+    def _next_logical_move(cls, grid: List[List[int]]):
+        """Return a naked or hidden single without trying possibilities."""
+        candidates = {(r, c): cls._candidates(grid, r, c)
+                      for r in range(9) for c in range(9) if grid[r][c] == 0}
+        for cell, values in candidates.items():
+            if len(values) == 1:
+                return (*cell, next(iter(values)))
+
+        units = []
+        units.extend([[(r, c) for c in range(9)] for r in range(9)])
+        units.extend([[(r, c) for r in range(9)] for c in range(9)])
+        units.extend([[(r, c) for r in range(br, br + 3) for c in range(bc, bc + 3)]
+                      for br in range(0, 9, 3) for bc in range(0, 9, 3)])
+        for unit in units:
+            for value in range(1, 10):
+                places = [(r, c) for r, c in unit if value in candidates.get((r, c), set())]
+                if len(places) == 1:
+                    return (*places[0], value)
+        return None
+
+    @classmethod
+    def _is_logically_solvable(cls, puzzle: List[List[int]]) -> bool:
+        grid = [row[:] for row in puzzle]
+        while True:
+            move = cls._next_logical_move(grid)
+            if move is None:
+                return all(all(value for value in row) for row in grid)
+            row, col, value = move
+            grid[row][col] = value
+
+    @classmethod
+    def _solution_count(cls, puzzle: List[List[int]], limit: int = 2) -> int:
+        grid = [row[:] for row in puzzle]
+
+        def solve() -> int:
+            best = None
+            best_values = None
+            for r in range(9):
+                for c in range(9):
+                    if grid[r][c] == 0:
+                        values = cls._candidates(grid, r, c)
+                        if not values:
+                            return 0
+                        if best_values is None or len(values) < len(best_values):
+                            best, best_values = (r, c), values
+            if best is None:
+                return 1
+            total = 0
+            r, c = best
+            for value in best_values:
+                grid[r][c] = value
+                total += solve()
+                if total >= limit:
+                    break
+            grid[r][c] = 0
+            return total
+
+        return solve()
+
+    def remove_numbers(self, difficulty: str = "MEDIUM") -> bool:
         """
         Remove numbers from the board based on difficulty level.
         
@@ -119,11 +187,15 @@ class SudokuGenerator:
         cells_to_remove = self.DIFFICULTY_LEVELS.get(difficulty, 45)
         
         removed = 0
-        
-        while removed < cells_to_remove:
-            row = random.randint(0, 8)
-            col = random.randint(0, 8)
-            
-            if self.board[row][col] != 0:
-                self.board[row][col] = 0
+        cells = [(row, col) for row in range(9) for col in range(9)]
+        random.shuffle(cells)
+        for row, col in cells:
+            if removed >= cells_to_remove:
+                break
+            value = self.board[row][col]
+            self.board[row][col] = 0
+            if self._solution_count(self.board) == 1 and self._is_logically_solvable(self.board):
                 removed += 1
+            else:
+                self.board[row][col] = value
+        return removed >= cells_to_remove

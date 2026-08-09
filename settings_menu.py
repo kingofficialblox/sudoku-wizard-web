@@ -17,6 +17,7 @@ class SettingsMenu:
         self.music_slider = pygame.Rect(0, 0, 420, 10)
         self.sfx_slider = pygame.Rect(0, 0, 420, 10)
         self.theme_button = pygame.Rect(0, 0, 420, 62)
+        self.animation_button = pygame.Rect(0, 0, 420, 62)
         self.back_button = pygame.Rect(0, 0, 220, 60)
         self._layout()
 
@@ -25,7 +26,8 @@ class SettingsMenu:
         self.music_slider.center = (center_x, 380)
         self.sfx_slider.center = (center_x, 520)
         self.theme_button.center = (center_x, 675)
-        self.back_button.center = (center_x, 830)
+        self.animation_button.center = (center_x, 755)
+        self.back_button.center = (center_x, 855)
 
     @staticmethod
     def _hit_box(slider):
@@ -51,6 +53,11 @@ class SettingsMenu:
                 self._set_volume("sfx", pos[0])
             elif self.theme_button.collidepoint(pos):
                 self.game.theme = DARK if self.game.theme == LIGHT else LIGHT
+                self.game.save_settings()
+                self.game.play_sound(self.game.click_sound)
+            elif self.animation_button.collidepoint(pos):
+                self.game.animations_enabled = not self.game.animations_enabled
+                self.game.board.animations_enabled = self.game.animations_enabled
                 self.game.save_settings()
                 self.game.play_sound(self.game.click_sound)
             elif self.back_button.collidepoint(pos):
@@ -105,4 +112,6 @@ class SettingsMenu:
         self._draw_slider("Sound effects", self.sfx_slider, self.game.sfx_volume, self.game.sfx_icon)
         mode = "Dark" if self.game.theme == DARK else "Light"
         self._draw_button(self.theme_button, f"Theme: {mode}   •   Change theme")
+        animation_state = "On" if self.game.animations_enabled else "Off"
+        self._draw_button(self.animation_button, f"Animations: {animation_state}")
         self._draw_button(self.back_button, "Back")

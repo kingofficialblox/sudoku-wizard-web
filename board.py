@@ -11,19 +11,20 @@ class Board:
     def __init__(self, logic):
 
         self.logic = logic
+        self.animations_enabled = True
         # Difficulty artwork is loaded and scaled only once.  Drawing the
         # cached surface each frame keeps it suitable for both desktop and
         # phone screens without adding per-frame image work.
         self.difficulty_backgrounds = {}
+        self.difficulty_background_cache = {}
+        self.daily_background_source = pygame.image.load("assets/images/dailybg.png").convert()
+        self.daily_background_cache = {}
         self.difficulty_headers = {}
         for difficulty in ("easy", "medium", "hard"):
             artwork = pygame.image.load(
                 f"assets/images/{difficulty}.png"
             ).convert()
-            self.difficulty_backgrounds[difficulty] = pygame.transform.smoothscale(
-                artwork,
-                (WIDTH, HEIGHT)
-            )
+            self.difficulty_backgrounds[difficulty] = artwork
             header = pygame.image.load(
                 f"assets/images/{difficulty}_header.png"
             ).convert_alpha()
@@ -32,21 +33,31 @@ class Board:
             self.difficulty_headers[difficulty] = pygame.transform.smoothscale(
                 header, (header_width, header_height)
             )
+        daily_header = pygame.image.load("assets/images/daily.png").convert_alpha()
+        daily_width = WIDTH - 40 if PORTRAIT_MODE else 700
+        daily_height = int(daily_header.get_height() * daily_width / daily_header.get_width())
+        self.daily_header = pygame.transform.smoothscale(daily_header, (daily_width, daily_height))
 
         # ---------- Icons ----------
 
         self.trophy = pygame.image.load(
             "assets/images/won.png"
         ).convert_alpha()
+        self.win_result_source = pygame.image.load("assets/images/gamewon.png").convert()
         self.win_result_background = pygame.transform.smoothscale(
-            pygame.image.load("assets/images/gamewon.png").convert(),
-            (WIDTH, HEIGHT)
+            self.win_result_source, (WIDTH, HEIGHT)
         )
         win_panel_size = (650, 1000) if PORTRAIT_MODE else (900, 900)
         self.win_panel_fade = pygame.transform.smoothscale(
             self.win_result_background, win_panel_size
         )
         self.win_panel_fade.set_alpha(32)
+        self.win_overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.win_overlay_color = None
+        # Reuse result-card assets on phones instead of building alpha
+        # surfaces and dimmed stars during every frame.
+        self.win_popup_fill_cache = {}
+        self.dim_star_icon = None
         self.sparkle_angle = 0
 
         self.timer_icon = pygame.image.load(
@@ -112,6 +123,11 @@ class Board:
             42,
             bold=True
         )
+        self.note_font = pygame.font.SysFont(
+            "Arial",
+            15 if PORTRAIT_MODE else 18,
+            bold=True
+        )
 
         self.info_font = pygame.font.Font(
             "assets/fonts/Poppins-Regular.ttf",
@@ -132,6 +148,15 @@ class Board:
             "assets/fonts/Poppins-Bold.ttf",
             68
         )
+        self.win_mobile_title_font = pygame.font.Font(
+            "assets/fonts/Poppins-Bold.ttf", 48
+        )
+        self.win_label_font = pygame.font.Font(
+            "assets/fonts/Poppins-Regular.ttf", 28
+        )
+        self.win_value_font = pygame.font.Font(
+            "assets/fonts/Poppins-Bold.ttf", 30
+        )
 
         self.popup_font = pygame.font.Font(
             "assets/fonts/Poppins-Regular.ttf",
@@ -145,6 +170,12 @@ class Board:
         self.score_font = pygame.font.Font(
             "assets/fonts/Poppins-Bold.ttf",
             34
+        )
+        self.mobile_stat_label_font = pygame.font.Font(
+            "assets/fonts/Poppins-Regular.ttf", 18
+        )
+        self.mobile_stat_value_font = pygame.font.Font(
+            "assets/fonts/Poppins-Bold.ttf", 25
         )
         # ---------- Smooth Selection Animation ----------
         self.highlight_x = BOARD_X
@@ -167,13 +198,25 @@ class Board:
 
             self.logic.select(row, col)
     def draw_background(self, screen, theme):
-        # Each difficulty has its own full-colour visual backdrop.
-        difficulty = str(getattr(self.logic, "difficulty", "easy")).lower()
-        artwork = self.difficulty_backgrounds.get(difficulty)
-        if artwork:
-            screen.blit(artwork, (0, 0))
+        # Daily Challenge has its own artwork, separate from the Medium board.
+        if getattr(self.logic, "daily_challenge", False):
+            screen_size = screen.get_size()
+            if screen_size not in self.daily_background_cache:
+                self.daily_background_cache[screen_size] = pygame.transform.smoothscale(
+                    self.daily_background_source, screen_size
+                )
+            screen.blit(self.daily_background_cache[screen_size], (0, 0))
         else:
-            screen.fill(theme["background"])
+            difficulty = str(getattr(self.logic, "difficulty", "easy")).lower()
+            artwork = self.difficulty_backgrounds.get(difficulty)
+            if artwork:
+                screen_size = screen.get_size()
+                cache_key = (difficulty, screen_size)
+                if cache_key not in self.difficulty_background_cache:
+                    self.difficulty_background_cache[cache_key] = pygame.transform.smoothscale(artwork, screen_size)
+                screen.blit(self.difficulty_background_cache[cache_key], (0, 0))
+            else:
+                screen.fill(theme["background"])
         background = theme["background"]
         board = theme["board"]
         grid = theme["grid"]
@@ -235,17 +278,17 @@ class Board:
 
         if icon is not None:
             icon_center = (rect.x + 35, rect.y + 43)
-            pygame.draw.circle(screen, theme["button"], icon_center, 25)
-            pygame.draw.circle(screen, theme["accent"], icon_center, 25, 2)
             screen.blit(icon, icon.get_rect(center=icon_center))
             text_x = rect.x + 70
         else:
             text_x = rect.x + 18
 
         compact = rect.height < 100
-        label_surface = self.info_font.render(label, True, theme["secondary"])
+        label_font = self.mobile_stat_label_font if PORTRAIT_MODE else self.info_font
+        value_font = self.mobile_stat_value_font if PORTRAIT_MODE else self.score_font
+        label_surface = label_font.render(label, True, theme["secondary"])
         screen.blit(label_surface, (text_x, rect.y + (17 if compact else 26)))
-        value_surface = self.score_font.render(
+        value_surface = value_font.render(
             str(value), True, value_color or theme["text"]
         )
         value_rect = value_surface.get_rect(
@@ -256,25 +299,51 @@ class Board:
     def draw_ui(self, screen, theme):
         elapsed = self.logic.get_elapsed_time()
         minutes, seconds = elapsed // 60, elapsed % 60
+        game_mode = getattr(self.logic, "game_mode", "classic")
+        if game_mode == "timed":
+            remaining = max(0, getattr(self.logic, "time_limit", 600) - elapsed)
+            time_label = "TIME LEFT"
+            time_value = f"{remaining // 60:02}:{remaining % 60:02}"
+        else:
+            time_label = "TIME"
+            time_value = f"{minutes:02}:{seconds:02}"
+        mistake_value = (
+            str(self.logic.mistakes)
+            if game_mode in ("zen", "practice")
+            else f"{self.logic.mistakes} / 3"
+        )
 
         card_w, card_h = 220, 110
         difficulty = str(getattr(self.logic, "difficulty", "easy")).lower()
-        header_art = self.difficulty_headers.get(difficulty)
+        is_daily = getattr(self.logic, "daily_challenge", False)
+        header_art = self.daily_header if is_daily else self.difficulty_headers.get(difficulty)
         if PORTRAIT_MODE:
-            header_rect = header_art.get_rect(center=(WIDTH // 2, 28 + header_art.get_height() // 2))
-            score_card = pygame.Rect(WIDTH // 2 - 110, header_rect.bottom + 15, card_w, card_h)
-            time_card = pygame.Rect(WIDTH // 2 - 110, score_card.bottom + 10, card_w, card_h)
-            mistakes_card = pygame.Rect(WIDTH // 2 - 110, time_card.bottom + 10, card_w, card_h)
+            header_rect = (header_art.get_rect(center=(WIDTH // 2, 28 + header_art.get_height() // 2))
+                           if header_art else pygame.Rect(WIDTH // 2 - 220, 28, 440, 68))
+            # Compact horizontal cards free vertical space for the board.
+            card_w, card_h = 210, 90
+            card_gap = 15
+            cards_x = (WIDTH - (card_w * 3 + card_gap * 2)) // 2
+            cards_y = header_rect.bottom + 15
+            score_card = pygame.Rect(cards_x, cards_y, card_w, card_h)
+            time_card = pygame.Rect(cards_x + card_w + card_gap, cards_y, card_w, card_h)
+            mistakes_card = pygame.Rect(cards_x + (card_w + card_gap) * 2, cards_y, card_w, card_h)
         else:
-            header_rect = header_art.get_rect(center=(WIDTH // 2, 75 + header_art.get_height() // 2))
+            header_rect = (header_art.get_rect(center=(WIDTH // 2, 75 + header_art.get_height() // 2))
+                           if header_art else pygame.Rect(WIDTH // 2 - 220, 50, 440, 60))
             card_h = 100
             score_card = pygame.Rect(BOARD_X + CELL_SIZE * 9 + 30, BOARD_Y + 20, card_w, card_h)
-            time_card = pygame.Rect(score_card.x, score_card.bottom + 12, card_w, card_h)
-            mistakes_card = pygame.Rect(score_card.x, time_card.bottom + 12, card_w, card_h)
+            time_card = pygame.Rect(score_card.x, score_card.bottom + 8, card_w, card_h)
+            mistakes_card = pygame.Rect(score_card.x, time_card.bottom + 8, card_w, card_h)
 
         # Each mode supplies its own header artwork, replacing the text card.
         if header_art:
             screen.blit(header_art, header_rect)
+        if game_mode != "classic":
+            badge_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 13 if PORTRAIT_MODE else 14)
+            badge = badge_font.render(game_mode.upper(), True, theme["accent"])
+            badge_box = badge.get_rect(topright=(header_rect.right - 15, header_rect.y + 12))
+            screen.blit(badge, badge_box)
 
         if abs(self.logic.score - self.display_score) < 1:
             self.display_score = self.logic.score
@@ -296,12 +365,12 @@ class Board:
             f"{int(self.display_score):,}", score_color
         )
         self._draw_stat_card(
-            screen, theme, time_card, self.timer_icon, "TIME",
-            f"{minutes:02}:{seconds:02}", theme["text"]
+            screen, theme, time_card, self.timer_icon, time_label,
+            time_value, theme["accent"] if game_mode == "timed" else theme["text"]
         )
         self._draw_stat_card(
             screen, theme, mistakes_card, self.mistake_icon, "MISTAKES",
-            f"{self.logic.mistakes} / 3", (220, 45, 45) if self.logic.mistakes else theme["text"]
+            mistake_value, (220, 45, 45) if self.logic.mistakes else theme["text"]
         )
 
         # Restore the short, fading score-change indicator above the score
@@ -588,10 +657,18 @@ class Board:
 
 
     def draw_numbers(self, screen, theme):
+        is_dark_theme = sum(theme["background"]) < 200
         for row in range(9):
             for col in range(9):
                 value = self.logic.grid[row][col]
                 if value == 0:
+                    # Candidate notes are arranged as a mini 3x3 keypad.
+                    for note in self.logic.notes[row][col]:
+                        note_row, note_col = divmod(note - 1, 3)
+                        note_text = self.note_font.render(str(note), True, theme["accent"])
+                        note_x = BOARD_X + col * CELL_SIZE + (note_col + 0.5) * CELL_SIZE / 3
+                        note_y = BOARD_Y + row * CELL_SIZE + (note_row + 0.5) * CELL_SIZE / 3
+                        screen.blit(note_text, note_text.get_rect(center=(note_x, note_y)))
                     continue
 
                 if self.logic.fixed[row][col]:
@@ -599,12 +676,12 @@ class Board:
                 elif value != self.logic.solution[row][col]:
                     color = (215, 40, 40)
                 elif self.logic.selected == (row, col):
-                    if theme == themes.DARK:
+                    if is_dark_theme:
                         color = (160, 210, 255)
                     else:
                         color = (25, 70, 220)
                 else:
-                    if theme == themes.DARK:
+                    if is_dark_theme:
                         color = (130, 185, 255)
                     else:
                         color = (55, 95, 235)
@@ -750,15 +827,25 @@ class Board:
         if not self.logic.game_won:
             return
 
-        if self.logic.popup_scale < 1:
+        if PORTRAIT_MODE:
+            # Skipping the large zoom animation removes a major source of
+            # stutter on Pydroid while preserving the finished result design.
+            self.logic.popup_scale = 1.0
+        elif self.logic.popup_scale < 1:
             self.logic.popup_scale += (1 - self.logic.popup_scale) * 0.14
 
         scale = min(self.logic.popup_scale, 1)
 
+        if self.win_result_background.get_size() != screen.get_size():
+            self.win_result_background = pygame.transform.smoothscale(
+                self.win_result_source, screen.get_size()
+            )
         screen.blit(self.win_result_background, (0, 0))
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((*theme["overlay"], 100))
-        screen.blit(overlay, (0,0))
+        overlay_color = (*theme["overlay"], 100)
+        if self.win_overlay_color != overlay_color:
+            self.win_overlay.fill(overlay_color)
+            self.win_overlay_color = overlay_color
+        screen.blit(self.win_overlay, (0, 0))
 
 
         popup_width = int((650 if PORTRAIT_MODE else 900) * scale)
@@ -772,13 +859,17 @@ class Board:
         )
 
 
-        popup_fill = pygame.Surface(popup.size, pygame.SRCALPHA)
-        pygame.draw.rect(
-            popup_fill,
-            (*theme["popup"], 191),  # 75% opacity
-            popup_fill.get_rect(),
-            border_radius=30
-        )
+        fill_key = (popup.size, theme["popup"])
+        popup_fill = self.win_popup_fill_cache.get(fill_key)
+        if popup_fill is None:
+            popup_fill = pygame.Surface(popup.size, pygame.SRCALPHA)
+            pygame.draw.rect(
+                popup_fill,
+                (*theme["popup"], 191),  # 75% opacity
+                popup_fill.get_rect(),
+                border_radius=30
+            )
+            self.win_popup_fill_cache[fill_key] = popup_fill
         screen.blit(popup_fill, popup.topleft)
 
         pygame.draw.rect(
@@ -814,7 +905,8 @@ class Board:
 
         # ---------------- TITLE ----------------
 
-        title = self.win_font.render(
+        win_title_font = self.win_mobile_title_font if PORTRAIT_MODE else self.win_font
+        title = win_title_font.render(
             "CONGRATULATIONS!",
             True,
             theme["success"]
@@ -843,23 +935,20 @@ class Board:
 
 
         for i in range(5):
-            pulse = 1 + 0.08 * math.sin(
-                time.time()*4 + i*0.5
-            )
+            pulse = 1 + 0.08 * math.sin(time.time() * 4 + i * 0.5) if (self.animations_enabled and not PORTRAIT_MODE) else 1
 
             size = int(star_size * pulse)
 
-            star = pygame.transform.smoothscale(
-                self.star_icon,
-                (size,size)
-            )
+            star = self.star_icon if size == star_size else pygame.transform.smoothscale(self.star_icon, (size, size))
 
             if i >= count:
-                star = star.copy()
-                star.fill(
-                    (120,120,120,180),
-                    special_flags=pygame.BLEND_RGBA_MULT
-                )
+                if self.dim_star_icon is None:
+                    self.dim_star_icon = self.star_icon.copy()
+                    self.dim_star_icon.fill(
+                        (120,120,120,180),
+                        special_flags=pygame.BLEND_RGBA_MULT
+                    )
+                star = self.dim_star_icon if size == star_size else pygame.transform.smoothscale(self.dim_star_icon, (size, size))
 
             x = start_x + i*spacing + (star_size-size)//2
             y = star_y + (star_size-size)//2
@@ -912,20 +1001,13 @@ class Board:
             (self.timer_icon, "TIME", f"{minutes:02}:{seconds:02}"),
             (self.mistake_icon, "MISTAKES", str(self.logic.mistakes)),
             (self.target_icon, "DIFFICULTY", self.logic.difficulty.title()),
-            (self.accuracy_icon, "ACCURACY", f"{self.logic.accuracy}%"),
+            (self.accuracy_icon, "MODE", getattr(self.logic, "game_mode", "classic").upper()),
             (self.score_icon, "SCORE", f"{self.logic.score:,}")
         ]
         
 
-        label_font = pygame.font.Font(
-            "assets/fonts/Poppins-Regular.ttf",
-            28
-        )
-
-        value_font = pygame.font.Font(
-            "assets/fonts/Poppins-Bold.ttf",
-            30
-        )
+        label_font = self.win_label_font
+        value_font = self.win_value_font
         y = stats_card.y + 35
 
         for icon,label,value in stats:
@@ -951,8 +1033,8 @@ class Board:
                 value_color = (225, 50, 50)       # Red
             elif label == "DIFFICULTY":
                 value_color = theme["text"]        # Black
-            elif label == "ACCURACY":
-                value_color = (34, 170, 70)       # Green
+            elif label == "MODE":
+                value_color = theme["accent"]
             elif label == "SCORE":
                 value_color = (145, 70, 255)      # Purple
             else:
@@ -983,6 +1065,21 @@ class Board:
 
             y += 52
 
+        rewards = getattr(self.logic, "result_rewards", None)
+        if rewards:
+            pieces = [
+                f"+{rewards.get('coins', 0)} COINS",
+                f"+{rewards.get('xp', 0)} XP",
+                f"{rewards.get('stars', 0)} STARS",
+            ]
+            if rewards.get("hints", 0):
+                pieces.append(f"+{rewards['hints']} HINT")
+            if rewards.get("auto_notes", 0):
+                pieces.append(f"+{rewards['auto_notes']} AUTO")
+            reward_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 16 if PORTRAIT_MODE else 18)
+            reward = reward_font.render("  •  ".join(pieces), True, theme["accent"])
+            screen.blit(reward, reward.get_rect(center=(popup.centerx, stats_card.bottom + 28)))
+
 
         
         
@@ -999,7 +1096,7 @@ class Board:
                     CELL_SIZE * 3 - 6
                 )
 
-                if theme == themes.DARK:
+                if sum(theme["background"]) < 200:
                     color = (
                         (48,52,62)
                         if (box_row + box_col) % 2 == 0
@@ -1022,6 +1119,12 @@ class Board:
                 )
 
     def draw(self, screen, theme):
+        # The win screen covers the game completely, so avoid drawing the
+        # entire board behind it every frame on phones.
+        if self.logic.game_won:
+            self.draw_win(screen, theme)
+            return
+
         self.draw_background(screen, theme)
         self.draw_ui(screen, theme)
         self.draw_cell_backgrounds(screen, theme)
