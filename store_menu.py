@@ -13,6 +13,7 @@ class StoreMenu:
         self.game = game
         self.title_font = pygame.font.Font("assets/fonts/Poppins-Bold.ttf", 42 if PORTRAIT_MODE else 48)
         self.font = pygame.font.Font("assets/fonts/Poppins-Regular.ttf", 18 if PORTRAIT_MODE else 20)
+        self.detail_font = pygame.font.Font("assets/fonts/Poppins-Regular.ttf", 16 if PORTRAIT_MODE else 17)
         self.value_font = pygame.font.Font("assets/fonts/Poppins-ExtraBold.ttf", 24 if PORTRAIT_MODE else 28)
         self.hint_buy_button = Button(0, 0, 250, 54, "BUY - 1000")
         self.erase_all_buy_button = Button(0, 0, 250, 54, "BUY - 1500")
@@ -132,14 +133,16 @@ class StoreMenu:
         screen.blit(coin_line, coin_line.get_rect(center=(WIDTH // 2, panel.y + coin_offset)))
         pygame.draw.line(screen, theme["accent"], (panel.x + 50, panel.y + divider_offset), (panel.right - 50, panel.y + divider_offset), 2)
 
-        token_height = 125 if PORTRAIT_MODE else 90
+        # Desktop cards reserve a dedicated right column for the purchase
+        # button, so descriptions never run underneath it.
+        token_height = 125 if PORTRAIT_MODE else 110
         token_gap = 15 if PORTRAIT_MODE else 10
         token_top = panel.y + (185 if PORTRAIT_MODE else 140)
         item = pygame.Rect(panel.x + 38, token_top, panel.width - 76, token_height)
         pygame.draw.rect(screen, theme["button"], item, border_radius=20)
         pygame.draw.rect(screen, theme["accent"], item, 2, border_radius=20)
         hint_title = self.value_font.render("HINT TOKEN", True, theme["text"])
-        detail = self.font.render("One shared balance for every difficulty and mode.", True, theme["secondary"])
+        detail = self.detail_font.render("Shared across every difficulty and mode.", True, theme["secondary"])
         text_center_x = WIDTH // 2 if PORTRAIT_MODE else item.x + 185
         screen.blit(hint_title, hint_title.get_rect(center=(text_center_x, item.y + 27)))
         screen.blit(detail, detail.get_rect(center=(text_center_x, item.y + 55)))
@@ -148,7 +151,8 @@ class StoreMenu:
         balance = self.font.render(f"AVAILABLE: {shared}", True, theme["accent"])
         purchase_x = WIDTH // 2 if PORTRAIT_MODE else item.right - 145
         screen.blit(balance, balance.get_rect(center=(item.right - 115, item.y + 24)))
-        self.hint_buy_button.rect.center = (purchase_x, item.bottom - 29)
+        purchase_y = item.bottom - 29 if PORTRAIT_MODE else item.y + 78
+        self.hint_buy_button.rect.center = (purchase_x, purchase_y)
         self.hint_buy_button.bg_color = theme["button"]
         self.hint_buy_button.hover_color = theme["button_hover"]
         self.hint_buy_button.border_color = theme["accent"]
@@ -159,12 +163,15 @@ class StoreMenu:
         pygame.draw.rect(screen, theme["button"], erase_item, border_radius=20)
         pygame.draw.rect(screen, (245, 130, 55), erase_item, 2, border_radius=20)
         erase_title = self.value_font.render("ERASE ALL TOKEN", True, theme["text"])
-        erase_detail = self.font.render("Clears all player entries and notes.", True, theme["secondary"])
+        erase_detail = self.detail_font.render("Clears all player entries and notes.", True, theme["secondary"])
         erase_balance = self.font.render(f"AVAILABLE: {self.game.stats.get_erase_all_tokens()}", True, (245, 130, 55))
         screen.blit(erase_title, erase_title.get_rect(center=(text_center_x, erase_item.y + 27)))
         screen.blit(erase_detail, erase_detail.get_rect(center=(text_center_x, erase_item.y + 55)))
         screen.blit(erase_balance, erase_balance.get_rect(center=(erase_item.right - 115, erase_item.y + 24)))
-        self.erase_all_buy_button.rect.center = (purchase_x, erase_item.bottom - 29)
+        self.erase_all_buy_button.rect.center = (
+            purchase_x,
+            erase_item.bottom - 29 if PORTRAIT_MODE else erase_item.y + 78,
+        )
         self.erase_all_buy_button.bg_color = theme["button"]
         self.erase_all_buy_button.hover_color = theme["button_hover"]
         self.erase_all_buy_button.border_color = (245, 130, 55)
@@ -175,12 +182,15 @@ class StoreMenu:
         pygame.draw.rect(screen, theme["button"], auto_item, border_radius=20)
         pygame.draw.rect(screen, (55, 150, 255), auto_item, 2, border_radius=20)
         auto_title = self.value_font.render("AUTO NOTES TOKEN", True, theme["text"])
-        auto_detail = self.font.render("Fills every empty cell with valid candidates.", True, theme["secondary"])
+        auto_detail = self.detail_font.render("Fills empty cells with valid candidates.", True, theme["secondary"])
         auto_balance = self.font.render(f"AVAILABLE: {self.game.stats.get_auto_notes_tokens()}", True, (55, 150, 255))
         screen.blit(auto_title, auto_title.get_rect(center=(text_center_x, auto_item.y + 27)))
         screen.blit(auto_detail, auto_detail.get_rect(center=(text_center_x, auto_item.y + 55)))
         screen.blit(auto_balance, auto_balance.get_rect(center=(auto_item.right - 115, auto_item.y + 24)))
-        self.auto_notes_buy_button.rect.center = (purchase_x, auto_item.bottom - 29)
+        self.auto_notes_buy_button.rect.center = (
+            purchase_x,
+            auto_item.bottom - 29 if PORTRAIT_MODE else auto_item.y + 78,
+        )
         self.auto_notes_buy_button.bg_color = theme["button"]
         self.auto_notes_buy_button.hover_color = theme["button_hover"]
         self.auto_notes_buy_button.border_color = (55, 150, 255)
@@ -188,8 +198,8 @@ class StoreMenu:
         self.auto_notes_buy_button.draw(screen)
 
         cosmetic_title = self.value_font.render("COLOR AURAS", True, theme["text"])
-        cosmetic_title_offset = 650 if PORTRAIT_MODE else 445
-        aura_top_offset = 680 if PORTRAIT_MODE else 475
+        cosmetic_title_offset = 650 if PORTRAIT_MODE else 555
+        aura_top_offset = 680 if PORTRAIT_MODE else 585
         aura_bottom_padding = 100 if PORTRAIT_MODE else 30
         screen.blit(cosmetic_title, cosmetic_title.get_rect(center=(WIDTH // 2, panel.y + cosmetic_title_offset)))
         owned = self.game.stats.data.get("cosmetics", {}).get("owned", ["violet"])
