@@ -600,9 +600,14 @@ class Game:
 
         if self.audio_available:
             try:
-                pygame.mixer.music.load(self.audio_asset("background.mp3"))
-                pygame.mixer.music.set_volume(self.music_volume)
-                pygame.mixer.music.play(-1, fade_ms=2000)
+                # Browser audio decoders can stutter or lock the page when a
+                # long music track is swapped during a menu transition.
+                # Keep web play responsive and use the short game effects;
+                # desktop and Android retain the complete music system.
+                if not WEB_MODE:
+                    pygame.mixer.music.load(self.audio_asset("background.mp3"))
+                    pygame.mixer.music.set_volume(self.music_volume)
+                    pygame.mixer.music.play(-1, fade_ms=2000)
                 self.click_sound = pygame.mixer.Sound(self.audio_asset("click.wav"))
                 self.correct_sound = pygame.mixer.Sound(self.audio_asset("correct.wav"))
                 self.wrong_sound = pygame.mixer.Sound(self.audio_asset("wrong.wav"))
@@ -2489,7 +2494,7 @@ class Game:
                 toast_surface.set_alpha(alpha)
                 self.screen.blit(toast_surface, toast.topleft)
         # ---------- Dynamic Music Volume ----------
-        if self.audio_available:
+        if self.audio_available and not WEB_MODE:
             current = pygame.mixer.music.get_volume()
             target = self.music_volume
             if abs(current-target) < 0.01:
@@ -2614,7 +2619,7 @@ class Game:
 
     def set_music_volume(self, volume):
         self.music_volume = volume
-        if self.audio_available:
+        if self.audio_available and not WEB_MODE:
             pygame.mixer.music.set_volume(volume)
 
     def set_sfx_volume(self, volume):
@@ -2626,7 +2631,7 @@ class Game:
                     sound.set_volume(volume)
 
     def fade_out_music(self, duration):
-        if self.audio_available:
+        if self.audio_available and not WEB_MODE:
             pygame.mixer.music.fadeout(duration)
 
     def record_match(self, won):
@@ -2678,7 +2683,7 @@ class Game:
             "hard": self.audio_asset("hard.mp3"),
         }
 
-        if not self.audio_available or track == self.current_music_track:
+        if WEB_MODE or not self.audio_available or track == self.current_music_track:
             return
 
         self.result_music_active = False
@@ -2690,7 +2695,7 @@ class Game:
 
     def start_result_music(self, result):
         """Play the win/loss cue once as music, then return to menu music."""
-        if not self.audio_available:
+        if WEB_MODE or not self.audio_available:
             return
 
         result_tracks = {
