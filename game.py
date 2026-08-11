@@ -26,6 +26,14 @@ class Game:
 
     SAVE_GAME_FILE = user_file("saved_game.json")
 
+    @staticmethod
+    def audio_asset(filename):
+        """Choose browser-safe OGG audio without changing desktop files."""
+        if WEB_MODE:
+            stem, _ = os.path.splitext(filename)
+            return f"assets/sounds/{stem}.ogg"
+        return f"assets/sounds/{filename}"
+
     def __init__(self):
 
         # The desktop layout is taller than some 900 px screens.  SDL centres
@@ -592,15 +600,15 @@ class Game:
 
         if self.audio_available:
             try:
-                pygame.mixer.music.load("assets/sounds/background.mp3")
+                pygame.mixer.music.load(self.audio_asset("background.mp3"))
                 pygame.mixer.music.set_volume(self.music_volume)
                 pygame.mixer.music.play(-1, fade_ms=2000)
-                self.click_sound = pygame.mixer.Sound("assets/sounds/click.wav")
-                self.correct_sound = pygame.mixer.Sound("assets/sounds/correct.wav")
-                self.wrong_sound = pygame.mixer.Sound("assets/sounds/wrong.wav")
-                self.hint_sound = pygame.mixer.Sound("assets/sounds/hint.wav")
-                self.win_sound = pygame.mixer.Sound("assets/sounds/win.wav")
-                self.lose_sound = pygame.mixer.Sound("assets/sounds/loose.wav")
+                self.click_sound = pygame.mixer.Sound(self.audio_asset("click.wav"))
+                self.correct_sound = pygame.mixer.Sound(self.audio_asset("correct.wav"))
+                self.wrong_sound = pygame.mixer.Sound(self.audio_asset("wrong.wav"))
+                self.hint_sound = pygame.mixer.Sound(self.audio_asset("hint.wav"))
+                self.win_sound = pygame.mixer.Sound(self.audio_asset("win.wav"))
+                self.lose_sound = pygame.mixer.Sound(self.audio_asset("loose.wav"))
                 for sound in (self.click_sound, self.correct_sound, self.wrong_sound,
                               self.hint_sound, self.win_sound, self.lose_sound):
                     sound.set_volume(self.sfx_volume)
@@ -2664,10 +2672,10 @@ class Game:
     def play_music_track(self, track):
         """Switch the looping music only when the requested track changes."""
         tracks = {
-            "background": "assets/sounds/background.mp3",
-            "easy": "assets/sounds/easy.mp3",
-            "medium": "assets/sounds/medium.mp3",
-            "hard": "assets/sounds/hard.mp3",
+            "background": self.audio_asset("background.mp3"),
+            "easy": self.audio_asset("easy.mp3"),
+            "medium": self.audio_asset("medium.mp3"),
+            "hard": self.audio_asset("hard.mp3"),
         }
 
         if not self.audio_available or track == self.current_music_track:
@@ -2686,8 +2694,8 @@ class Game:
             return
 
         result_tracks = {
-            "win": "assets/sounds/win.wav",
-            "lose": "assets/sounds/loose.wav",
+            "win": self.audio_asset("win.wav"),
+            "lose": self.audio_asset("loose.wav"),
         }
         try:
             pygame.mixer.music.fadeout(150)
