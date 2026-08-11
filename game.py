@@ -62,7 +62,9 @@ class Game:
         # proportional copy fitted to the current monitor. This keeps layout,
         # text, hitboxes and artwork consistent across resolutions and DPI
         # settings without cropping on smaller computers.
-        self.desktop_scaled = not PORTRAIT_MODE
+        # Browser builds already provide their own canvas scaling.  Do not
+        # request a desktop-only fullscreen surface inside the web player.
+        self.desktop_scaled = not PORTRAIT_MODE and not WEB_MODE
         if self.desktop_scaled:
             # Desktop starts in real full-screen.  The game still renders to
             # its fixed design canvas, then fits it proportionally below.
@@ -2781,18 +2783,30 @@ class Game:
         self.save_game_state()
         return True
 
-    def run(self):
+    def _run_frame(self):
+        self.clock.tick(FPS)
+        self.handle_events()
+        self.draw()
+        if pygame.time.get_ticks() - self.last_game_save >= 1000:
+            self.save_game_state()
+            self.last_game_save = pygame.time.get_ticks()
+
+    async def run_web(self):
+        """Yield to the browser after every frame so its UI stays responsive."""
+        import asyncio
 
         while self.running:
+            self._run_frame()
+            await asyncio.sleep(0)
+        pygame.quit()
 
-            self.clock.tick(FPS)
+    def run(self):
+        if WEB_MODE:
+            import asyncio
+            asyncio.run(self.run_web())
+            return
 
-            self.handle_events()
-
-            self.draw()
-
-            if pygame.time.get_ticks() - self.last_game_save >= 1000:
-                self.save_game_state()
-                self.last_game_save = pygame.time.get_ticks()
+        while self.running:
+            self._run_frame()
 
         pygame.quit()

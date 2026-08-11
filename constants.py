@@ -6,6 +6,7 @@ import sys
 APP_VERSION = "1.0.0"
 
 # ==================== WINDOW ====================
+WEB_MODE = sys.platform == "emscripten"
 PORTRAIT_MODE = (
     os.environ.get("SUDOKU_PORTRAIT") == "1"
     or sys.platform == "android"
