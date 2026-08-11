@@ -600,11 +600,14 @@ class Game:
 
         if self.audio_available:
             try:
-                # Browser audio decoders can stutter or lock the page when a
-                # long music track is swapped during a menu transition.
-                # Keep web play responsive and use the short game effects;
-                # desktop and Android retain the complete music system.
-                if not WEB_MODE:
+                # The web version keeps one quiet ambient loop.  It never
+                # swaps tracks during game-mode selection, avoiding the
+                # crackling and page stalls caused by repeated browser decodes.
+                if WEB_MODE:
+                    pygame.mixer.music.load(self.audio_asset("background.mp3"))
+                    pygame.mixer.music.set_volume(min(self.music_volume, 0.22))
+                    pygame.mixer.music.play(-1)
+                else:
                     pygame.mixer.music.load(self.audio_asset("background.mp3"))
                     pygame.mixer.music.set_volume(self.music_volume)
                     pygame.mixer.music.play(-1, fade_ms=2000)
@@ -2619,8 +2622,8 @@ class Game:
 
     def set_music_volume(self, volume):
         self.music_volume = volume
-        if self.audio_available and not WEB_MODE:
-            pygame.mixer.music.set_volume(volume)
+        if self.audio_available:
+            pygame.mixer.music.set_volume(min(volume, 0.22) if WEB_MODE else volume)
 
     def set_sfx_volume(self, volume):
         self.sfx_volume = volume
