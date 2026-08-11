@@ -4,6 +4,10 @@
 
 import os
 import sys
+# Keep this import in the entry file.  Pygbag scans main.py to include the
+# browser-compatible pygame-ce package; importing it only from game.py causes
+# the web runtime to create an empty placeholder module instead.
+import pygame
 
 from app_paths import RESOURCE_DIR
 
