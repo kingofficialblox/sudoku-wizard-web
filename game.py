@@ -34,6 +34,19 @@ class Game:
             return f"assets/sounds/{stem}.ogg"
         return f"assets/sounds/{filename}"
 
+    @staticmethod
+    def set_web_music_volume(volume):
+        """Control the browser's native background player when running online."""
+        if not WEB_MODE:
+            return
+        try:
+            import platform
+            platform.window.sudokuWizardAudio.volume = max(0.0, min(1.0, float(volume)))
+        except Exception:
+            # The page may still be loading; the player will use its default
+            # volume until Settings is changed.
+            pass
+
     def __init__(self):
 
         # The desktop layout is taller than some 900 px screens.  SDL centres
@@ -600,13 +613,10 @@ class Game:
 
         if self.audio_available:
             try:
-                # The web version keeps one quiet ambient loop.  It never
-                # swaps tracks during game-mode selection, avoiding the
-                # crackling and page stalls caused by repeated browser decodes.
                 if WEB_MODE:
-                    pygame.mixer.music.load(self.audio_asset("background.mp3"))
-                    pygame.mixer.music.set_volume(min(self.music_volume, 0.22))
-                    pygame.mixer.music.play(-1)
+                    # Native browser audio is stable on phones and desktops.
+                    # pygame.mixer remains available for optional short SFX.
+                    self.set_web_music_volume(self.music_volume)
                 else:
                     pygame.mixer.music.load(self.audio_asset("background.mp3"))
                     pygame.mixer.music.set_volume(self.music_volume)
@@ -2622,8 +2632,11 @@ class Game:
 
     def set_music_volume(self, volume):
         self.music_volume = volume
+        if WEB_MODE:
+            self.set_web_music_volume(volume)
+            return
         if self.audio_available:
-            pygame.mixer.music.set_volume(min(volume, 0.22) if WEB_MODE else volume)
+            pygame.mixer.music.set_volume(volume)
 
     def set_sfx_volume(self, volume):
         self.sfx_volume = volume

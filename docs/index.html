@@ -388,6 +388,18 @@ frameborder="1"
         info.hidden = debug_hidden
         box.hidden =  debug_hidden
 
+        // Use the browser's native player for dependable web audio.
+        const browserMusic = new Audio("audio/background.ogg");
+        browserMusic.loop = true;
+        browserMusic.preload = "auto";
+        browserMusic.volume = 0.50;
+        window.sudokuWizardAudio = browserMusic;
+        document.addEventListener("pointerdown", () => {
+            if (browserMusic.paused) {
+                browserMusic.play().catch(() => {});
+            }
+        });
+
         show_infobox()
     }
 
