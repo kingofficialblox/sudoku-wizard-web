@@ -2,13 +2,13 @@ import json
 import os
 from datetime import date
 
-from app_paths import user_file
+from app_paths import load_player_data, save_player_data
 
 
 class StatsManager:
     """Persistent lifetime statistics and level progression."""
 
-    FILE_NAME = user_file("stats.json")
+    FILE_NAME = "stats.json"
     MODES = ("easy", "medium", "hard")
     COSMETICS = {
         "violet": {"name": "VIOLET ARC", "cost": 0, "accent": (128, 70, 255)},
@@ -48,8 +48,9 @@ class StatsManager:
     def _load(self):
         data = self._defaults()
         try:
-            with open(self.FILE_NAME, "r") as file:
-                saved = json.load(file)
+            saved = load_player_data(self.FILE_NAME)
+            if not saved:
+                return data
             data.update({key: saved[key] for key in data if key in saved})
             # Upgrade older profiles that stored tokens separately per
             # difficulty. Their earned tokens become one shared balance.
@@ -87,11 +88,8 @@ class StatsManager:
         return data
 
     def save(self):
-        try:
-            with open(self.FILE_NAME, "w") as file:
-                json.dump(self.data, file, indent=4)
-        except OSError as error:
-            print("Statistics could not be saved:", error)
+        if not save_player_data(self.FILE_NAME, self.data):
+            print("Statistics could not be saved")
 
     def xp_required(self):
         return 2500 + (self.data["level"] - 1) * 600

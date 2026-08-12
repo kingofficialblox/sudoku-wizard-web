@@ -388,12 +388,21 @@ frameborder="1"
         info.hidden = debug_hidden
         box.hidden =  debug_hidden
 
-        // Use the browser's native player for dependable web audio.
+        // Stable browser-native music with one track for every difficulty.
         const browserMusic = new Audio("audio/background.ogg");
         browserMusic.loop = true;
         browserMusic.preload = "auto";
         browserMusic.volume = 0.50;
         window.sudokuWizardAudio = browserMusic;
+        window.sudokuWizardSetMusic = (track, volume) => {
+            const source = `audio/${track}.ogg`;
+            browserMusic.volume = Math.max(0, Math.min(1, Number(volume)));
+            if (!browserMusic.src.endsWith(source)) {
+                browserMusic.src = source;
+                browserMusic.load();
+            }
+            browserMusic.play().catch(() => {});
+        };
         document.addEventListener("pointerdown", () => {
             if (browserMusic.paused) {
                 browserMusic.play().catch(() => {});

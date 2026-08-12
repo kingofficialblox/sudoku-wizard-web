@@ -21,10 +21,10 @@ from tutorial_menu import TutorialMenu
 from achievements_menu import AchievementsMenu
 from store_menu import StoreMenu
 from daily_calendar_menu import DailyCalendarMenu
-from app_paths import user_file
+from app_paths import user_file, load_player_data, save_player_data, delete_player_data
 class Game:
 
-    SAVE_GAME_FILE = user_file("saved_game.json")
+    SAVE_GAME_FILE = "saved_game.json"
 
     @staticmethod
     def audio_asset(filename):
@@ -45,6 +45,17 @@ class Game:
         except Exception:
             # The page may still be loading; the player will use its default
             # volume until Settings is changed.
+            pass
+
+    def set_web_music_track(self, track, volume=None):
+        """Switch stable, native browser music when a game mode changes."""
+        if not WEB_MODE:
+            return
+        try:
+            import platform
+            target_volume = self.music_volume if volume is None else volume
+            platform.window.sudokuWizardSetMusic(track, max(0.0, min(1.0, float(target_volume))))
+        except Exception:
             pass
 
     def __init__(self):
@@ -616,7 +627,7 @@ class Game:
                 if WEB_MODE:
                     # Native browser audio is stable on phones and desktops.
                     # pygame.mixer remains available for optional short SFX.
-                    self.set_web_music_volume(self.music_volume)
+                    self.set_web_music_track("background", self.music_volume)
                 else:
                     pygame.mixer.music.load(self.audio_asset("background.mp3"))
                     pygame.mixer.music.set_volume(self.music_volume)
@@ -666,11 +677,8 @@ class Game:
             "tutorial_seen": self.tutorial_seen,
         }
 
-        try:
-            with open(user_file("settings.json"), "w") as f:
-                json.dump(data, f, indent=4)
-        except OSError as error:
-            print("Settings could not be saved:", error)
+        if not save_player_data("settings.json", data):
+            print("Settings could not be saved")
 
     def save_game_state(self):
         """Persist an unfinished puzzle so Continue survives closing the app."""
@@ -699,16 +707,14 @@ class Game:
             "game_mode": getattr(self.logic, "game_mode", "classic"),
             "time_limit": getattr(self.logic, "time_limit", None),
         }
-        try:
-            with open(self.SAVE_GAME_FILE, "w") as file:
-                json.dump(data, file)
-        except OSError as error:
-            print("Game could not be saved:", error)
+        if not save_player_data(self.SAVE_GAME_FILE, data):
+            print("Game could not be saved")
 
     def load_saved_game(self):
         try:
-            with open(self.SAVE_GAME_FILE, "r") as file:
-                data = json.load(file)
+            data = load_player_data(self.SAVE_GAME_FILE)
+            if not data:
+                return
             difficulty = data["difficulty"].lower()
             if difficulty not in ("easy", "medium", "hard"):
                 return
@@ -749,17 +755,14 @@ class Game:
             return
 
     def delete_saved_game(self):
-        try:
-            if os.path.exists(self.SAVE_GAME_FILE):
-                os.remove(self.SAVE_GAME_FILE)
-        except OSError:
-            pass
+        delete_player_data(self.SAVE_GAME_FILE)
 
 
     def load_settings(self):
         try:
-            with open(user_file("settings.json"), "r") as f:
-                data = json.load(f)
+            data = load_player_data("settings.json")
+            if not data:
+                raise ValueError("No saved settings")
 
             self.base_theme = DARK if data.get("theme") == "dark" else LIGHT
             self.theme = self.base_theme.copy()
@@ -1202,8 +1205,7 @@ class Game:
                             )
                         )
 
-                        if self.audio_available:
-                            pygame.mixer.music.set_volume(self.music_volume)
+                        self.set_music_volume(self.music_volume)
                         self.save_settings()
 
                 if self.drag_sfx:
@@ -2633,7 +2635,7 @@ class Game:
     def set_music_volume(self, volume):
         self.music_volume = volume
         if WEB_MODE:
-            self.set_web_music_volume(volume)
+            self.set_web_music_track(self.current_music_track, volume)
             return
         if self.audio_available:
             pygame.mixer.music.set_volume(volume)
@@ -2699,7 +2701,13 @@ class Game:
             "hard": self.audio_asset("hard.mp3"),
         }
 
-        if WEB_MODE or not self.audio_available or track == self.current_music_track:
+        if WEB_MODE:
+            if track != self.current_music_track:
+                self.set_web_music_track(track)
+                self.current_music_track = track
+            return
+
+        if not self.audio_available or track == self.current_music_track:
             return
 
         self.result_music_active = False
